@@ -56,6 +56,9 @@ logica di torneo vive nella UI.
 - `data`
 - `stato`: `bozza` | `iscrizioni_aperte` | `in_corso` | `concluso`
 - `regolePunteggio`: `{ setAlMeglioDi: 1|3, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true, cap?: number }`
+  — **interamente configurabile per ogni torneo**, indipendente da tipologia e formato; i valori
+  mostrati sono solo default modificabili. Nessuna riserva/titolare distinta nel 4x4: lista
+  giocatori unica.
 - `codiceIscrizione`: stringa usata dal form pubblico per associare le iscrizioni al torneo
 
 `tipologia` e `formato` sono **dimensioni indipendenti** (es. un 4x4 a gironi+eliminazione).
