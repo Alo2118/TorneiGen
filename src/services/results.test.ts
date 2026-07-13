@@ -42,4 +42,13 @@ describe('propagaTabellone', () => {
     const f = out.find((m) => m.id === 'f')!
     expect(f.teamAId).toBe('B') // ricalcolato dal nuovo risultato
   })
+  it('azzera lo slot a valle se il risultato a monte torna incompleto', () => {
+    const semi1 = tab('s1', 1, 0, 'A', 'B') // set: [], nessun vincitore
+    const semi2 = { ...tab('s2', 1, 1, 'C', 'D'), set: [{ puntiA: 21, puntiB: 12 }], vincitoreId: 'C', stato: 'conclusa' as const }
+    const finale = { ...tab('f', 2, 0, 'A', 'C') } // stale: conteneva 'A' da una propagazione precedente
+    const out = propagaTabellone([semi1, semi2, finale], r)
+    const f = out.find((m) => m.id === 'f')!
+    expect(f.teamAId).toBeNull() // ripulito perché semi1 non ha più un vincitore
+    expect(f.teamBId).toBe('C') // semi2 resta propagato
+  })
 })
