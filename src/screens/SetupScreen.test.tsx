@@ -20,6 +20,7 @@ describe('SetupScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.type(screen.getByLabelText(/nome/i), 'Coppa Estate')
+    await userEvent.type(screen.getByLabelText(/data/i), '2026-08-01')
     await userEvent.click(screen.getByRole('button', { name: /salva/i }))
     expect(await screen.findByText('squadre')).toBeInTheDocument()
     const all = await listTournaments()
@@ -78,5 +79,18 @@ describe('SetupScreen', () => {
     expect(all[0].id).toBe('t1')
     expect(all[0].codiceIscrizione).toBe('ZZZ111')
     expect(all[0].stato).toBe('iscrizioni_aperte')
+  })
+
+  it('reindirizza alla home se il torneo da modificare non esiste', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/does-not-exist/setup']}>
+        <Routes>
+          <Route path="/" element={<div>home</div>} />
+          <Route path="/tornei/:id/setup" element={<SetupScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('home')).toBeInTheDocument()
   })
 })

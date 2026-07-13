@@ -39,7 +39,11 @@ export function SetupScreen() {
     }
     let attivo = true
     getTournament(id).then((t) => {
-      if (!attivo || !t) return
+      if (!attivo) return
+      if (!t) {
+        navigate('/')
+        return
+      }
       setNome(t.nome)
       setTipologia(t.tipologia)
       setFormato(t.formato)
@@ -50,7 +54,7 @@ export function SetupScreen() {
     return () => {
       attivo = false
     }
-  }, [id])
+  }, [id, navigate])
 
   function aggiornaRegole(patch: Partial<RegolePunteggio>) {
     setRegole((r) => ({ ...r, ...patch }))
@@ -127,6 +131,7 @@ export function SetupScreen() {
           type="date"
           value={data}
           onChange={(e) => setData(e.target.value)}
+          required
         />
 
         <fieldset className="setup-rules">
