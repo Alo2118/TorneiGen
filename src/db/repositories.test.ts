@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from './database'
-import { saveTournament, listTournaments, replaceGenerated, matchesOf } from './repositories'
+import { saveTournament, listTournaments, replaceGenerated, matchesOf, groupsOf } from './repositories'
 import type { Tournament, Match, Group } from '../engine/types'
 
 const t: Tournament = {
@@ -29,5 +29,17 @@ describe('repositories', () => {
     // rigenerando con liste vuote, si svuota
     await replaceGenerated('t1', [], [])
     expect(await matchesOf('t1')).toHaveLength(0)
+
+    // seed foreign tournament to prove delete is scoped to t1 only
+    const g2: Group = { id: 'g2', tournamentId: 't2', nome: 'B', teamIds: ['a', 'b'] }
+    const m2: Match = { id: 'm2', tournamentId: 't2', fase: 'girone', groupId: 'g2', round: 1, teamAId: 'a', teamBId: 'b', set: [], stato: 'programmata' }
+    await db.groups.put(g2)
+    await db.matches.put(m2)
+
+    // regenerate t1 again, verify t2 data survives
+    await replaceGenerated('t1', [g], [m])
+    await replaceGenerated('t1', [], [])
+    expect((await groupsOf('t2')).map((x) => x.id)).toEqual(['g2'])
+    expect((await matchesOf('t2')).map((x) => x.id)).toEqual(['m2'])
   })
 })
