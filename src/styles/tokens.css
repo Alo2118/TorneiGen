@@ -382,6 +382,72 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space); }
 .modal-head h2 { margin: 0; font-size: 1.1rem; }
 
+/* --- Classifiche --- */
+.standings {
+  padding: calc(var(--space) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+.standings-head h1 { margin: 0; }
+.standings-groups { display: flex; flex-direction: column; gap: calc(var(--space) * 3); }
+.standings-group { display: flex; flex-direction: column; gap: var(--space); }
+.standings-group h2 { margin: 0; font-size: 1rem; }
+.standings-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.standings-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.standings-table th,
+.standings-table td {
+  padding: calc(var(--space) * 1.25) calc(var(--space) * 1.5);
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.standings-table th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.standings-table th.tnum,
+.standings-table td.tnum { text-align: right; }
+.standings-table tbody tr:last-child td { border-bottom: none; }
+.standings-row-lead td:first-child { color: var(--win); font-weight: 600; }
+
+.standings-bracket { display: flex; flex-direction: column; gap: calc(var(--space) * 1.5); }
+.standings-bracket h2 { margin: 0; font-size: 1rem; }
+.standings-champion { margin: 0; color: var(--ink); }
+.standings-champion strong { color: var(--win); }
+.standings-rounds { display: flex; flex-direction: column; gap: calc(var(--space) * 2); }
+.standings-round { display: flex; flex-direction: column; gap: var(--space); }
+.standings-round h3 { margin: 0; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.standings-round-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) / 2);
+}
+.standings-bracket-match {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 1.25) calc(var(--space) * 1.5);
+}
+.standings-advanced { color: var(--win); font-weight: 600; }
+
 /* --- App shell --- */
 .shell { display: flex; min-height: 100%; }
 

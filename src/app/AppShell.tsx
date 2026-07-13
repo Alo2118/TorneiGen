@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useParams, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament } from '../db/repositories'
+import { exportBackup } from '../db/backup'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 
@@ -22,6 +23,20 @@ export function AppShell() {
   const { id } = useParams()
   const navigate = useNavigate()
   const torneo = useLiveQuery(() => (id ? getTournament(id) : undefined), [id])
+
+  async function handleExport() {
+    if (!torneo) return
+    const data = await exportBackup(torneo.id)
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `torneo-${torneo.nome}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="shell">
@@ -58,7 +73,7 @@ export function AppShell() {
               <Button variant="ghost" onClick={() => navigate(`/tornei/${torneo.id}/tabellone`)}>
                 Genera
               </Button>
-              <Button variant="ghost" disabled title="Disponibile a breve">Export</Button>
+              <Button variant="ghost" onClick={handleExport}>Export JSON</Button>
             </div>
           </header>
         )}
