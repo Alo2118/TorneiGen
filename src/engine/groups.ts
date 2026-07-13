@@ -1,6 +1,7 @@
 import type { StandingRow } from './types'
 
 export function splitIntoGroups(teamIds: string[], numeroGironi: number): string[][] {
+  if (numeroGironi <= 0) throw new Error('numeroGironi deve essere maggiore di 0')
   const gironi: string[][] = Array.from({ length: numeroGironi }, () => [])
   teamIds.forEach((id, i) => {
     const giro = Math.floor(i / numeroGironi)

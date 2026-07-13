@@ -16,6 +16,10 @@ describe('splitIntoGroups', () => {
     expect(g[0]).toEqual(['1', '4', '5', '8'])
     expect(g[1]).toEqual(['2', '3', '6', '7'])
   })
+
+  it('lancia un errore se numeroGironi è 0', () => {
+    expect(() => splitIntoGroups(['A'], 0)).toThrow()
+  })
 })
 
 describe('qualifiedTeams', () => {
