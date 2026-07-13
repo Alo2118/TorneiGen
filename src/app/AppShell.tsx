@@ -6,7 +6,6 @@ import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 
 const SEZIONI = [
-  { to: 'riepilogo', label: 'Riepilogo', icon: '⌂' },
   { to: 'squadre', label: 'Squadre', icon: '▤' },
   { to: 'tabellone', label: 'Tabellone', icon: '☷' },
   { to: 'classifiche', label: 'Classifiche', icon: '≡' },
@@ -70,6 +69,9 @@ export function AppShell() {
               </div>
             </div>
             <div className="tourn-header-actions">
+              <Button variant="ghost" onClick={() => navigate(`/tornei/${torneo.id}/setup`)}>
+                Modifica
+              </Button>
               <Button variant="ghost" onClick={() => navigate(`/tornei/${torneo.id}/tabellone`)}>
                 Genera
               </Button>

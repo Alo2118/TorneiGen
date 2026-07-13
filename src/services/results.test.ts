@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { applicaRisultato, propagaTabellone } from './results'
-import type { Match, RegolePunteggio } from '../engine/types'
+import { generaTorneo } from './generation'
+import type { Match, RegolePunteggio, Tournament, Team } from '../engine/types'
 
 const r: RegolePunteggio = { setAlMeglioDi: 1, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true }
 
@@ -50,5 +51,63 @@ describe('propagaTabellone', () => {
     const f = out.find((m) => m.id === 'f')!
     expect(f.teamAId).toBeNull() // ripulito perché semi1 non ha più un vincitore
     expect(f.teamBId).toBe('C') // semi2 resta propagato
+  })
+
+  it('avanza automaticamente una squadra in bye del round 1 (nessun avversario, nessun set)', () => {
+    const bye = tab('bye', 1, 0, 'A', null) // bye: slot B vuoto, nessun set giocato
+    const reale = { ...tab('m2', 1, 1, 'C', 'D'), set: [{ puntiA: 21, puntiB: 12 }], vincitoreId: 'C', stato: 'conclusa' as const }
+    const finale = tab('f', 2, 0, null, null)
+    const out = propagaTabellone([bye, reale, finale], r)
+    const f = out.find((m) => m.id === 'f')!
+    expect(f.teamAId).toBe('A') // la squadra in bye avanza senza aver giocato
+    expect(f.teamBId).toBe('C')
+  })
+})
+
+describe('propagaTabellone integrazione con generaTorneo (bye reale)', () => {
+  it('la squadra in bye resta nel tabellone dopo aver salvato il risultato del primo turno reale', () => {
+    const torneo: Tournament = {
+      id: 't1',
+      nome: 'Torneo Test',
+      tipologia: '2x2',
+      formato: 'eliminazione_diretta',
+      data: '2026-07-13',
+      stato: 'in_corso',
+      regolePunteggio: r,
+      codiceIscrizione: 'ABC123',
+    }
+    const teams: Team[] = ['A', 'B', 'C'].map((nome, i) => ({
+      id: nome,
+      tournamentId: 't1',
+      nome,
+      players: [],
+      testaDiSerie: i + 1,
+      stato: 'confermata' as const,
+      origine: 'manuale' as const,
+    }))
+
+    const { matches } = generaTorneo(torneo, teams)
+
+    // con 3 squadre: un match reale al round 1 (due squadre) + un bye (una squadra sola)
+    const round1 = matches.filter((m) => m.round === 1)
+    const matchReale = round1.find((m) => m.teamAId !== null && m.teamBId !== null)!
+    const matchBye = round1.find((m) => (m.teamAId === null) !== (m.teamBId === null))!
+    expect(matchReale).toBeDefined()
+    expect(matchBye).toBeDefined()
+    const teamInBye = matchBye.teamAId ?? matchBye.teamBId
+
+    // la squadra in bye deve già essere presente nella finale grazie alla generazione (resolveByes)
+    const finalePreRisultato = matches.find((m) => m.round === 2)!
+    expect([finalePreRisultato.teamAId, finalePreRisultato.teamBId]).toContain(teamInBye)
+
+    // salva il risultato del match reale
+    const matchAggiornato = applicaRisultato(matchReale, [{ puntiA: 21, puntiB: 15 }], r)
+    const matchesConRisultato = matches.map((m) => (m.id === matchAggiornato.id ? matchAggiornato : m))
+
+    const propagati = propagaTabellone(matchesConRisultato, r)
+    const finale = propagati.find((m) => m.round === 2)!
+
+    // la squadra in bye deve essere ancora presente nel tabellone dopo la propagazione
+    expect([finale.teamAId, finale.teamBId]).toContain(teamInBye)
   })
 })

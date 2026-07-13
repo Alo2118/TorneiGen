@@ -35,7 +35,14 @@ export function propagaTabellone(matches: Match[], regole: RegolePunteggio): Mat
       const succ = key(round + 1, Math.floor(idx / 2))
       if (!succ) continue
       const o = matchOutcome(m.set, regole)
-      const vincitore = o.vincitore === 'A' ? m.teamAId : o.vincitore === 'B' ? m.teamBId : null
+      let vincitore = o.vincitore === 'A' ? m.teamAId : o.vincitore === 'B' ? m.teamBId : null
+      if (vincitore == null && m.round === 1) {
+        // bye: al round 1 uno slot vuoto e l'altro pieno avanza automaticamente
+        const soloA = m.teamAId !== null && m.teamBId === null
+        const soloB = m.teamBId !== null && m.teamAId === null
+        if (soloA) vincitore = m.teamAId
+        else if (soloB) vincitore = m.teamBId
+      }
       if (vincitore == null) continue
       if (idx % 2 === 0) succ.teamAId = vincitore
       else succ.teamBId = vincitore
