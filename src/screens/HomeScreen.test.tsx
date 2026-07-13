@@ -24,6 +24,6 @@ describe('HomeScreen', () => {
 
   it('mostra un invito quando non ci sono tornei', async () => {
     render(<MemoryRouter><HomeScreen /></MemoryRouter>)
-    expect(await screen.findByText(/nuovo torneo/i)).toBeInTheDocument()
+    expect(await screen.findByText(/nessun torneo/i)).toBeInTheDocument()
   })
 })

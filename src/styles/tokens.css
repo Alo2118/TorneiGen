@@ -44,11 +44,11 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
 }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn-primary { background: var(--sea); color: #fff; }
+.btn-primary { background: var(--sea); color: var(--surface); }
 .btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--sea) 85%, black); }
 .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
 .btn-ghost:hover:not(:disabled) { background: var(--paper); border-color: var(--sea); }
-.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger { background: var(--danger); color: var(--surface); }
 .btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 85%, black); }
 
 /* --- Field --- */

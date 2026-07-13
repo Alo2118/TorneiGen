@@ -20,7 +20,7 @@ export function HomeScreen() {
             <li key={t.id} className="card">
               <Link to={`/tornei/${t.id}/squadre`} className="card-link">
                 <h3>{t.nome}</h3>
-                <p className="muted">{t.tipologia} · {t.formato.replace('_', ' ')} · {t.data}</p>
+                <p className="muted">{t.tipologia} · {t.formato.replace(/_/g, ' ')} · {t.data}</p>
               </Link>
             </li>
           ))}
