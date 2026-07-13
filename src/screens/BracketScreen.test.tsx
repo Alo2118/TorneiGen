@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitForElementToBeRemoved } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { db } from '../db/database'
@@ -49,10 +49,17 @@ describe('BracketScreen', () => {
     const piuA = screen.getByRole('button', { name: /aumenta punteggio squadra a, set 1/i })
     for (let i = 0; i < 21; i++) fireEvent.click(piuA)
     await userEvent.click(screen.getByRole('button', { name: /salva/i }))
-    await waitForElementToBeRemoved(() => screen.queryByRole('dialog'))
+    // Race-tolerant: il dialog può già essersi chiuso prima che l'assert inizi ad
+    // osservare (waitForElementToBeRemoved lancerebbe in quel caso). waitFor con
+    // queryByRole invece passa sia se il dialog è già assente sia se sparisce dopo.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
-    const salvate = await db.matches.where('tournamentId').equals('t1').toArray()
-    expect(salvate.some((m) => m.stato === 'conclusa')).toBe(true)
+    // Verifica deterministica dell'esito reale: il salvataggio è avvenuto in db,
+    // indipendentemente dai tempi di chiusura del dialog.
+    await waitFor(async () => {
+      const salvate = await db.matches.where('tournamentId').equals('t1').toArray()
+      expect(salvate.some((m) => m.stato === 'conclusa')).toBe(true)
+    })
   })
 
   it('sposta il focus dentro il dialog all\'apertura e lo ripristina sul trigger alla chiusura', async () => {
