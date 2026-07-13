@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useParams } from 'react-router-dom'
+import { NavLink, Outlet, useParams, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament } from '../db/repositories'
 import { Badge } from '../components/Badge'
@@ -20,6 +20,7 @@ const STATO_LABEL: Record<string, string> = {
 
 export function AppShell() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const torneo = useLiveQuery(() => (id ? getTournament(id) : undefined), [id])
 
   return (
@@ -54,7 +55,9 @@ export function AppShell() {
               </div>
             </div>
             <div className="tourn-header-actions">
-              <Button variant="ghost" disabled title="Disponibile a breve">Genera</Button>
+              <Button variant="ghost" onClick={() => navigate(`/tornei/${torneo.id}/tabellone`)}>
+                Genera
+              </Button>
               <Button variant="ghost" disabled title="Disponibile a breve">Export</Button>
             </div>
           </header>
