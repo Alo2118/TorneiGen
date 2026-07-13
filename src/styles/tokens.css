@@ -111,6 +111,44 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .card h3 { margin: 0 0 calc(var(--space) / 2); }
 .muted { color: var(--muted); font-size: .875rem; margin: 0; }
 
+/* --- Setup torneo --- */
+.setup {
+  padding: calc(var(--space) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+.setup-head h1 { margin: 0; }
+.setup-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2.5);
+}
+.setup-rules {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+.setup-rules legend { font-weight: 600; padding: 0 4px; }
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: calc(var(--space) * 2);
+}
+.field-checkbox { flex-direction: row; align-items: center; gap: var(--space); }
+.field-checkbox .field-input { width: auto; }
+.setup-actions { display: flex; justify-content: flex-end; }
+
 /* --- App shell --- */
 .shell { display: flex; min-height: 100%; }
 
@@ -182,6 +220,8 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   .shell-main { padding-bottom: calc(var(--space) * 9); }
   .tourn-header { padding: calc(var(--space) * 1.5) calc(var(--space) * 2); }
   .home { padding: calc(var(--space) * 2); }
+  .setup { padding: calc(var(--space) * 2); }
+  .setup-form { padding: calc(var(--space) * 2); }
 
   .bottom-bar {
     display: flex;

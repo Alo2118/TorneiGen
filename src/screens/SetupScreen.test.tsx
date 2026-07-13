@@ -1,0 +1,82 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { db } from '../db/database'
+import { listTournaments, saveTournament } from '../db/repositories'
+import { SetupScreen } from './SetupScreen'
+import type { Tournament } from '../engine/types'
+
+describe('SetupScreen', () => {
+  beforeEach(async () => { await db.tournaments.clear() })
+
+  it('crea un nuovo torneo e lo salva', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/nuovo']}>
+        <Routes>
+          <Route path="/tornei/nuovo" element={<SetupScreen />} />
+          <Route path="/tornei/:id/squadre" element={<div>squadre</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.type(screen.getByLabelText(/nome/i), 'Coppa Estate')
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+    expect(await screen.findByText('squadre')).toBeInTheDocument()
+    const all = await listTournaments()
+    expect(all[0].nome).toBe('Coppa Estate')
+    expect(all[0].stato).toBe('bozza')
+    expect(all[0].codiceIscrizione).toHaveLength(6)
+    expect(all[0].regolePunteggio).toEqual({
+      setAlMeglioDi: 1,
+      puntiSet: 21,
+      puntiTieBreak: 15,
+      vittoriaConDue: true,
+    })
+  })
+
+  it('mostra una nota quando il formato è king of the court', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/nuovo']}>
+        <Routes>
+          <Route path="/tornei/nuovo" element={<SetupScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.selectOptions(screen.getByLabelText(/formato/i), 'king_of_the_court')
+    expect(await screen.findByText(/disponibile a breve/i)).toBeInTheDocument()
+  })
+
+  it('carica un torneo esistente in modalità modifica', async () => {
+    const esistente: Tournament = {
+      id: 't1',
+      nome: 'Torneo esistente',
+      tipologia: '4x4',
+      formato: 'eliminazione_diretta',
+      data: '2026-08-01',
+      stato: 'iscrizioni_aperte',
+      regolePunteggio: { setAlMeglioDi: 3, puntiSet: 25, puntiTieBreak: 15, vittoriaConDue: true },
+      codiceIscrizione: 'ZZZ111',
+    }
+    await saveTournament(esistente)
+
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/setup']}>
+        <Routes>
+          <Route path="/tornei/:id/setup" element={<SetupScreen />} />
+          <Route path="/tornei/:id/squadre" element={<div>squadre</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByDisplayValue('Torneo esistente')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+    expect(await screen.findByText('squadre')).toBeInTheDocument()
+
+    const all = await listTournaments()
+    expect(all).toHaveLength(1)
+    expect(all[0].id).toBe('t1')
+    expect(all[0].codiceIscrizione).toBe('ZZZ111')
+    expect(all[0].stato).toBe('iscrizioni_aperte')
+  })
+})
