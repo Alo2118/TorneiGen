@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament, teamsOf, groupsOf, matchesOf, replaceGenerated, saveTournament } from '../db/repositories'
@@ -8,6 +8,13 @@ import { Button } from '../components/Button'
 import { MatchRow } from '../components/MatchRow'
 import { ScoreControl } from '../components/ScoreControl'
 import type { Match, SetScore } from '../engine/types'
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+function elementiFocusabili(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+}
 
 export function BracketScreen() {
   const { id } = useParams()
@@ -19,13 +26,65 @@ export function BracketScreen() {
   const [errore, setErrore] = useState<string | null>(null)
   const [generando, setGenerando] = useState(false)
   const [matchInModifica, setMatchInModifica] = useState<Match | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLElement | null>(null)
+
+  // Sposta il focus dentro il pannello quando il dialog si apre.
+  useEffect(() => {
+    if (!matchInModifica) return
+    const panel = panelRef.current
+    if (!panel) return
+    const [primo] = elementiFocusabili(panel)
+    ;(primo ?? panel).focus()
+  }, [matchInModifica])
+
+  // Ripristina il focus sul trigger quando il dialog si chiude.
+  useEffect(() => {
+    if (matchInModifica) return
+    triggerRef.current?.focus()
+    triggerRef.current = null
+  }, [matchInModifica])
 
   if (!id || !torneo) return null
+
+  function apriModifica(match: Match) {
+    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setMatchInModifica(match)
+  }
+
+  function chiudiModifica() {
+    setMatchInModifica(null)
+  }
+
+  function handleDialogKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      chiudiModifica()
+      return
+    }
+    if (e.key !== 'Tab') return
+    const panel = panelRef.current
+    if (!panel) return
+    const focusabili = elementiFocusabili(panel)
+    if (focusabili.length === 0) return
+    const primo = focusabili[0]
+    const ultimo = focusabili[focusabili.length - 1]
+    const attivo = document.activeElement
+    if (e.shiftKey) {
+      if (attivo === primo || !panel.contains(attivo)) {
+        e.preventDefault()
+        ultimo.focus()
+      }
+    } else if (attivo === ultimo || !panel.contains(attivo)) {
+      e.preventDefault()
+      primo.focus()
+    }
+  }
 
   async function handleSalva(set: SetScore[]) {
     if (!torneo || !matchInModifica) return
     await salvaEProppaga(torneo.id, matchInModifica.id, set, torneo.regolePunteggio)
-    setMatchInModifica(null)
+    chiudiModifica()
   }
 
   const isKotc = torneo.formato === 'king_of_the_court'
@@ -91,7 +150,7 @@ export function BracketScreen() {
                     key={m.id}
                     match={m}
                     teamNames={teamNames}
-                    onModifica={m.teamAId && m.teamBId ? setMatchInModifica : undefined}
+                    onModifica={m.teamAId && m.teamBId ? apriModifica : undefined}
                   />
                 ))}
               </ul>
@@ -101,13 +160,19 @@ export function BracketScreen() {
       )}
 
       {matchInModifica && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Inserisci punteggio">
-          <div className="modal-panel">
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Inserisci punteggio"
+          onKeyDown={handleDialogKeyDown}
+        >
+          <div className="modal-panel" ref={panelRef} tabIndex={-1}>
             <div className="modal-head">
               <h2>
                 {nomeSquadra(matchInModifica.teamAId, teamNames)} vs {nomeSquadra(matchInModifica.teamBId, teamNames)}
               </h2>
-              <Button type="button" variant="ghost" onClick={() => setMatchInModifica(null)}>
+              <Button type="button" variant="ghost" onClick={chiudiModifica}>
                 Annulla
               </Button>
             </div>

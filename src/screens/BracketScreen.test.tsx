@@ -54,4 +54,23 @@ describe('BracketScreen', () => {
     const salvate = await db.matches.where('tournamentId').equals('t1').toArray()
     expect(salvate.some((m) => m.stato === 'conclusa')).toBe(true)
   })
+
+  it('sposta il focus dentro il dialog all\'apertura e lo ripristina sul trigger alla chiusura', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
+        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /genera/i }))
+
+    const [trigger] = await screen.findAllByRole('button', { name: /inserisci risultato/i })
+    await userEvent.click(trigger)
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toContainElement(document.activeElement as HTMLElement)
+
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(document.activeElement).toBe(trigger)
+  })
 })
