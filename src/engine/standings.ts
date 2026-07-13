@@ -52,12 +52,17 @@ export function computeStandings(
     )
     if (!m) return 0
     const o = matchOutcome(m.set, r)
+    if (!o.completa) return 0
     const vincitoreId = o.vincitore === 'A' ? m.teamAId : m.teamBId
     if (vincitoreId === x.teamId) return -1
     if (vincitoreId === y.teamId) return 1
     return 0
   }
 
+  // Nota: lo scontro diretto risolve solo parità a due squadre. Parità a 3+
+  // squadre con cicli non transitivi (es. A batte B, B batte C, C batte A)
+  // non sono pienamente risolte da questo criterio: limitazione nota,
+  // possibile evoluzione futura con la "classifica avulsa".
   return [...rows.values()].sort((a, b) => {
     if (b.vinte !== a.vinte) return b.vinte - a.vinte
     const qsA = quoziente(a.setVinti, a.setPersi)

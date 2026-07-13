@@ -31,14 +31,18 @@ describe('computeStandings', () => {
     expect(rows[0].teamId).toBe('A') // 2 vittorie
   })
 
-  it('a parità di vittorie usa lo scontro diretto tra due squadre', () => {
-    // A e B: 1 vittoria ciascuna nel girone, ma A ha battuto B
+  it('a parità di vittorie, quoziente set e quoziente punti usa lo scontro diretto', () => {
+    // A e C: 1 vittoria/1 sconfitta ciascuna, stesso quoziente set (1) e
+    // stesso quoziente punti (1), pareggio risolto solo dallo scontro diretto
+    // (A ha battuto B).
     const rows = computeStandings(
-      ['A', 'B'],
-      [match('A', 'B', 21, 15)],
+      ['A', 'B', 'C', 'D'],
+      [match('A', 'B', 21, 15), match('C', 'A', 21, 15), match('B', 'D', 21, 15)],
       r,
     )
-    expect(rows[0].teamId).toBe('A')
+    const idxA = rows.findIndex((x) => x.teamId === 'A')
+    const idxB = rows.findIndex((x) => x.teamId === 'B')
+    expect(idxA).toBeLessThan(idxB)
   })
 
   it('ignora le partite non concluse', () => {
