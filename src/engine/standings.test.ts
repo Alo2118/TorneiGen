@@ -36,7 +36,7 @@ describe('computeStandings', () => {
     // stesso quoziente punti (1), pareggio risolto solo dallo scontro diretto
     // (A ha battuto B).
     const rows = computeStandings(
-      ['A', 'B', 'C', 'D'],
+      ['B', 'A', 'C', 'D'],
       [match('A', 'B', 21, 15), match('C', 'A', 21, 15), match('B', 'D', 21, 15)],
       r,
     )
