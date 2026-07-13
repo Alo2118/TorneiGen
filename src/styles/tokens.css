@@ -149,6 +149,81 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .field-checkbox .field-input { width: auto; }
 .setup-actions { display: flex; justify-content: flex-end; }
 
+/* --- Squadre --- */
+.teams {
+  padding: calc(var(--space) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+.teams-head { display: flex; flex-direction: column; gap: calc(var(--space) / 2); }
+.teams-head h1 { margin: 0; }
+.team-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+.team-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+.team-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space); }
+.team-card-head h3 { margin: 0; }
+.player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 calc(var(--space) * 1.5);
+}
+.team-card-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space);
+  flex-wrap: wrap;
+}
+.team-card-actions .field { width: 140px; }
+.team-card-buttons { display: flex; gap: var(--space); }
+.team-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2.5);
+}
+.team-form h2 { margin: 0; font-size: 1.1rem; }
+.player-rows { display: flex; flex-direction: column; gap: calc(var(--space) * 2); }
+.player-row {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+.player-row legend { font-weight: 600; padding: 0 4px; color: var(--muted); }
+.player-row-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: calc(var(--space) * 2);
+}
+.team-form-actions { display: flex; justify-content: flex-end; gap: var(--space); }
+
 /* --- App shell --- */
 .shell { display: flex; min-height: 100%; }
 
@@ -222,6 +297,8 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   .home { padding: calc(var(--space) * 2); }
   .setup { padding: calc(var(--space) * 2); }
   .setup-form { padding: calc(var(--space) * 2); }
+  .teams { padding: calc(var(--space) * 2); }
+  .team-form { padding: calc(var(--space) * 2); }
 
   .bottom-bar {
     display: flex;
