@@ -3,9 +3,11 @@ import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament, teamsOf, groupsOf, matchesOf, replaceGenerated, saveTournament } from '../db/repositories'
 import { generaTorneo } from '../services/generation'
+import { salvaEProppaga } from '../services/saveResult'
 import { Button } from '../components/Button'
 import { MatchRow } from '../components/MatchRow'
-import type { Match } from '../engine/types'
+import { ScoreControl } from '../components/ScoreControl'
+import type { Match, SetScore } from '../engine/types'
 
 export function BracketScreen() {
   const { id } = useParams()
@@ -16,8 +18,15 @@ export function BracketScreen() {
 
   const [errore, setErrore] = useState<string | null>(null)
   const [generando, setGenerando] = useState(false)
+  const [matchInModifica, setMatchInModifica] = useState<Match | null>(null)
 
   if (!id || !torneo) return null
+
+  async function handleSalva(set: SetScore[]) {
+    if (!torneo || !matchInModifica) return
+    await salvaEProppaga(torneo.id, matchInModifica.id, set, torneo.regolePunteggio)
+    setMatchInModifica(null)
+  }
 
   const isKotc = torneo.formato === 'king_of_the_court'
   const teamNames: Record<string, string> = Object.fromEntries(teams.map((t) => [t.id, t.nome]))
@@ -78,13 +87,43 @@ export function BracketScreen() {
               <h2>{g.titolo}</h2>
               <ul className="match-list">
                 {g.partite.map((m: Match) => (
-                  <MatchRow key={m.id} match={m} teamNames={teamNames} />
+                  <MatchRow
+                    key={m.id}
+                    match={m}
+                    teamNames={teamNames}
+                    onModifica={m.teamAId && m.teamBId ? setMatchInModifica : undefined}
+                  />
                 ))}
               </ul>
             </section>
           ))}
         </div>
       )}
+
+      {matchInModifica && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Inserisci punteggio">
+          <div className="modal-panel">
+            <div className="modal-head">
+              <h2>
+                {nomeSquadra(matchInModifica.teamAId, teamNames)} vs {nomeSquadra(matchInModifica.teamBId, teamNames)}
+              </h2>
+              <Button type="button" variant="ghost" onClick={() => setMatchInModifica(null)}>
+                Annulla
+              </Button>
+            </div>
+            <ScoreControl
+              regole={torneo.regolePunteggio}
+              setIniziali={matchInModifica.set}
+              onSalva={handleSalva}
+            />
+          </div>
+        </div>
+      )}
     </section>
   )
+}
+
+function nomeSquadra(id: string | null, teamNames: Record<string, string>): string {
+  if (!id) return 'Da definire'
+  return teamNames[id] ?? id
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitForElementToBeRemoved } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { db } from '../db/database'
@@ -32,5 +32,26 @@ describe('BracketScreen', () => {
     // 3 squadre round robin = 3 partite: A gioca 2 volte, quindi il suo nome compare più volte
     expect((await screen.findAllByText('A')).length).toBeGreaterThan(0)
     expect((await db.matches.where('tournamentId').equals('t1').toArray()).length).toBe(3)
+  })
+
+  it('apre il controllo punteggio, salva il risultato e aggiorna la vista', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
+        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /genera/i }))
+
+    const [primoBottone] = await screen.findAllByRole('button', { name: /inserisci risultato/i })
+    await userEvent.click(primoBottone)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    const piuA = screen.getByRole('button', { name: /aumenta punteggio squadra a, set 1/i })
+    for (let i = 0; i < 21; i++) fireEvent.click(piuA)
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+    await waitForElementToBeRemoved(() => screen.queryByRole('dialog'))
+
+    const salvate = await db.matches.where('tournamentId').equals('t1').toArray()
+    expect(salvate.some((m) => m.stato === 'conclusa')).toBe(true)
   })
 })
