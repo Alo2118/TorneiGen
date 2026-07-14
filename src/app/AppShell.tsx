@@ -10,6 +10,7 @@ const SEZIONI = [
   { to: 'squadre', label: 'Squadre', icon: '▤' },
   { to: 'iscrizioni', label: 'Iscrizioni', icon: '✎' },
   { to: 'tabellone', label: 'Tabellone', icon: '☷' },
+  { to: 'calendario', label: 'Calendario', icon: '⏱' },
   { to: 'classifiche', label: 'Classifiche', icon: '≡' },
 ]
 
