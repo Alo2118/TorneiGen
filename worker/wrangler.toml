@@ -7,4 +7,4 @@ compatibility_date = "2026-01-01"
 # `wrangler secret put READ_TOKEN`
 [[kv_namespaces]]
 binding = "KV"
-id = "DA_IMPOSTARE_AL_DEPLOY"
+id = "b829e5cefba14ce4bc75776f4fc30847"
