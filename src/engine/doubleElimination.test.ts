@@ -32,4 +32,14 @@ describe('generateDoubleElimination', () => {
     expect(wbFin!.winnerFeeds!.slot).toBe('A')
     expect(lbFin!.winnerFeeds!.slot).toBe('B')
   })
+
+  it('2 squadre: WB 1 match, LB 0, finale 1; WB loser va diretto in finale slot B', () => {
+    const b = generateDoubleElimination(['A', 'B'])
+    expect(b.filter((m) => m.tabelloneTipo === 'vincenti')).toHaveLength(1)
+    expect(b.filter((m) => m.tabelloneTipo === 'perdenti')).toHaveLength(0)
+    expect(b.filter((m) => m.tabelloneTipo === 'finale')).toHaveLength(1)
+    const wbMatch = b.find((m) => m.tabelloneTipo === 'vincenti')!
+    expect(wbMatch.winnerFeeds).toEqual({ matchId: 'gf', slot: 'A' })
+    expect(wbMatch.loserFeeds).toEqual({ matchId: 'gf', slot: 'B' })
+  })
 })

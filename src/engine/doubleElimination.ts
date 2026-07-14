@@ -71,7 +71,12 @@ export function generateDoubleElimination(teamIds: string[]): DoubleBracketMatch
   }
   const wbFinal = wb.find((m) => m.round === R)!
   wbFinal.winnerFeeds = { matchId: 'gf', slot: 'A' }
-  if (prev.length > 0) prev[0].winnerFeeds = { matchId: 'gf', slot: 'B' }
+  if (prev.length > 0) {
+    prev[0].winnerFeeds = { matchId: 'gf', slot: 'B' }
+  } else {
+    // N=2: nessun tabellone perdenti — il perdente del WB va direttamente in finale
+    wbFinal.loserFeeds = { matchId: 'gf', slot: 'B' }
+  }
 
   return [...wb, ...lb, gf]
 }
