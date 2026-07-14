@@ -22,6 +22,12 @@ const REGOLE_DEFAULT: RegolePunteggio = {
   vittoriaConDue: true,
 }
 
+type GiornataForm = { data: string; inizio: string; fine: string }
+
+function giornataDefault(data: string): GiornataForm {
+  return { data, inizio: '19:00', fine: '23:00' }
+}
+
 export function SetupScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -31,6 +37,9 @@ export function SetupScreen() {
   const [formato, setFormato] = useState<Formato>('girone_italiana')
   const [data, setData] = useState('')
   const [regole, setRegole] = useState<RegolePunteggio>(REGOLE_DEFAULT)
+  const [giornate, setGiornate] = useState<GiornataForm[]>([giornataDefault('')])
+  const [numeroCampi, setNumeroCampi] = useState(1)
+  const [durataPartitaMin, setDurataPartitaMin] = useState(30)
   const [pronto, setPronto] = useState(!id)
 
   useEffect(() => {
@@ -50,6 +59,9 @@ export function SetupScreen() {
       setFormato(t.formato)
       setData(t.data)
       setRegole(t.regolePunteggio)
+      setGiornate(t.giornate && t.giornate.length > 0 ? t.giornate : [giornataDefault(t.data)])
+      setNumeroCampi(t.numeroCampi ?? 1)
+      setDurataPartitaMin(t.durataPartitaMin ?? 30)
       setPronto(true)
     })
     return () => {
@@ -61,10 +73,23 @@ export function SetupScreen() {
     setRegole((r) => ({ ...r, ...patch }))
   }
 
+  function aggiornaGiornata(index: number, patch: Partial<GiornataForm>) {
+    setGiornate((gs) => gs.map((g, i) => (i === index ? { ...g, ...patch } : g)))
+  }
+
+  function aggiungiGiornata() {
+    setGiornate((gs) => [...gs, giornataDefault(data)])
+  }
+
+  function rimuoviGiornata(index: number) {
+    setGiornate((gs) => (gs.length > 1 ? gs.filter((_, i) => i !== index) : gs))
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const esistente = id ? await getTournament(id) : undefined
     const tournamentId = esistente?.id ?? id ?? newId()
+    const giornateFinali = giornate.map((g) => ({ ...g, data: g.data || data }))
     const torneo: Tournament = {
       id: tournamentId,
       nome,
@@ -74,6 +99,9 @@ export function SetupScreen() {
       stato: esistente?.stato ?? 'bozza',
       regolePunteggio: regole,
       codiceIscrizione: esistente?.codiceIscrizione ?? newId().slice(0, 6).toUpperCase(),
+      giornate: giornateFinali,
+      numeroCampi,
+      durataPartitaMin,
     }
     await saveTournament(torneo)
     navigate(`/tornei/${tournamentId}/squadre`)
@@ -186,6 +214,68 @@ export function SetupScreen() {
             />
             <span className="field-label">Vittoria a 2 di scarto</span>
           </label>
+        </fieldset>
+
+        <fieldset className="setup-rules">
+          <legend>Calendario</legend>
+
+          <div className="giornata-rows">
+            {giornate.map((g, i) => (
+              <fieldset key={i} className="giornata-row">
+                <legend>Giornata {i + 1}</legend>
+                <div className="giornata-row-fields">
+                  <Field
+                    label="Data"
+                    id={`giornata-${i}-data`}
+                    type="date"
+                    value={g.data}
+                    onChange={(e) => aggiornaGiornata(i, { data: e.target.value })}
+                  />
+                  <Field
+                    label="Inizio"
+                    id={`giornata-${i}-inizio`}
+                    type="time"
+                    value={g.inizio}
+                    onChange={(e) => aggiornaGiornata(i, { inizio: e.target.value })}
+                  />
+                  <Field
+                    label="Fine"
+                    id={`giornata-${i}-fine`}
+                    type="time"
+                    value={g.fine}
+                    onChange={(e) => aggiornaGiornata(i, { fine: e.target.value })}
+                  />
+                </div>
+                {giornate.length > 1 && (
+                  <Button type="button" variant="ghost" onClick={() => rimuoviGiornata(i)}>
+                    Rimuovi giornata
+                  </Button>
+                )}
+              </fieldset>
+            ))}
+          </div>
+
+          <Button type="button" variant="ghost" onClick={aggiungiGiornata}>
+            Aggiungi giornata
+          </Button>
+
+          <div className="rules-grid">
+            <Field
+              label="Numero campi"
+              type="number"
+              min={1}
+              value={numeroCampi}
+              onChange={(e) => setNumeroCampi(Number(e.target.value))}
+            />
+
+            <Field
+              label="Durata partita (min)"
+              type="number"
+              min={1}
+              value={durataPartitaMin}
+              onChange={(e) => setDurataPartitaMin(Number(e.target.value))}
+            />
+          </div>
         </fieldset>
 
         <div className="setup-actions">

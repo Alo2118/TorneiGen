@@ -19,8 +19,8 @@ describe('SetupScreen', () => {
         </Routes>
       </MemoryRouter>,
     )
-    await userEvent.type(screen.getByLabelText(/nome/i), 'Coppa Estate')
-    await userEvent.type(screen.getByLabelText(/data/i), '2026-08-01')
+    await userEvent.type(screen.getByLabelText(/^nome$/i), 'Coppa Estate')
+    await userEvent.type(screen.getAllByLabelText(/^data$/i)[0], '2026-08-01')
     await userEvent.click(screen.getByRole('button', { name: /salva/i }))
     expect(await screen.findByText('squadre')).toBeInTheDocument()
     const all = await listTournaments()
@@ -33,6 +33,44 @@ describe('SetupScreen', () => {
       puntiTieBreak: 15,
       vittoriaConDue: true,
     })
+    expect(all[0].giornate).toEqual([{ data: '2026-08-01', inizio: '19:00', fine: '23:00' }])
+    expect(all[0].numeroCampi).toBe(1)
+    expect(all[0].durataPartitaMin).toBe(30)
+  })
+
+  it('permette di aggiungere e rimuovere giornate e di impostare campi/durata', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/nuovo']}>
+        <Routes>
+          <Route path="/tornei/nuovo" element={<SetupScreen />} />
+          <Route path="/tornei/:id/squadre" element={<div>squadre</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.type(screen.getByLabelText(/^nome$/i), 'Coppa Autunno')
+    await userEvent.type(screen.getAllByLabelText(/^data$/i)[0], '2026-09-01')
+
+    await userEvent.click(screen.getByRole('button', { name: /aggiungi giornata/i }))
+    expect(screen.getByText('Giornata 2')).toBeInTheDocument()
+
+    await userEvent.click(screen.getAllByRole('button', { name: /rimuovi giornata/i })[0])
+    expect(screen.queryByText('Giornata 2')).not.toBeInTheDocument()
+
+    const numeroCampiInput = screen.getByLabelText(/numero campi/i)
+    await userEvent.clear(numeroCampiInput)
+    await userEvent.type(numeroCampiInput, '3')
+
+    const durataInput = screen.getByLabelText(/durata partita/i)
+    await userEvent.clear(durataInput)
+    await userEvent.type(durataInput, '25')
+
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+    expect(await screen.findByText('squadre')).toBeInTheDocument()
+
+    const all = await listTournaments()
+    expect(all[0].giornate).toEqual([{ data: '2026-09-01', inizio: '19:00', fine: '23:00' }])
+    expect(all[0].numeroCampi).toBe(3)
+    expect(all[0].durataPartitaMin).toBe(25)
   })
 
   it('mostra una nota quando il formato è king of the court', async () => {

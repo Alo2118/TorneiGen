@@ -74,6 +74,9 @@ export interface Tournament {
   stato: StatoTorneo
   regolePunteggio: RegolePunteggio
   codiceIscrizione: string
+  giornate?: { data: string; inizio: string; fine: string }[]
+  numeroCampi?: number
+  durataPartitaMin?: number
 }
 
 // --- Tipi risultato del motore (indipendenti dalla persistenza) ---
