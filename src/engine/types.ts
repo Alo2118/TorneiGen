@@ -3,6 +3,7 @@ export type Tipologia = '2x2' | '4x4'
 export type Formato =
   | 'gironi_eliminazione'
   | 'eliminazione_diretta'
+  | 'eliminazione_doppia'
   | 'girone_italiana'
   | 'king_of_the_court'
 
@@ -59,6 +60,9 @@ export interface Match {
   stato: 'programmata' | 'in_corso' | 'conclusa'
   campo?: string
   orario?: string
+  tabelloneTipo?: 'vincenti' | 'perdenti' | 'finale'
+  vincitoreVerso?: { matchId: string; slot: 'A' | 'B' } | null
+  perdenteVerso?: { matchId: string; slot: 'A' | 'B' } | null
 }
 
 export interface Tournament {
@@ -88,6 +92,17 @@ export interface BracketMatch {
   teamBId: string | null
   feedsMatchId: string | null
   feedsSlot: 'A' | 'B' | null
+}
+
+export interface DoubleBracketMatch {
+  id: string
+  tabelloneTipo: 'vincenti' | 'perdenti' | 'finale'
+  round: number
+  index: number
+  teamAId: string | null
+  teamBId: string | null
+  winnerFeeds: { matchId: string; slot: 'A' | 'B' } | null
+  loserFeeds: { matchId: string; slot: 'A' | 'B' } | null
 }
 
 export interface StandingRow {
