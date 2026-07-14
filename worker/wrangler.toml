@@ -1,0 +1,10 @@
+name = "torneigen-api"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# Il namespace KV va creato al deploy: `wrangler kv namespace create KV`
+# e incollato l'id qui sotto. Il secret READ_TOKEN si imposta con:
+# `wrangler secret put READ_TOKEN`
+[[kv_namespaces]]
+binding = "KV"
+id = "DA_IMPOSTARE_AL_DEPLOY"
