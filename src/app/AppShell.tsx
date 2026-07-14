@@ -55,6 +55,13 @@ export function AppShell() {
             ))}
           </ul>
         )}
+
+        <div className="nav-footer">
+          <NavLink to="/impostazioni" className="nav-link">
+            <span className="nav-icon" aria-hidden="true">⚙</span>
+            <span className="nav-label">Impostazioni</span>
+          </NavLink>
+        </div>
       </nav>
 
       <div className="shell-main">
