@@ -6,6 +6,7 @@ import { programmaCalendario } from '../services/calendario'
 import { db } from '../db/database'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
+import { Modal } from '../components/Modal'
 import type { Match, Team } from '../engine/types'
 
 function nomeSquadra(id: string | null, teamNames: Record<string, string>): string {
@@ -75,6 +76,10 @@ export function CalendarScreen() {
 
   async function handleSalvaSposta() {
     if (!inSpostamento) return
+    if (!nuovoOrario) {
+      toast('Inserisci un orario valido', 'errore')
+      return
+    }
     await db.matches.update(inSpostamento.id, { orario: nuovoOrario, campo: nuovoCampo })
     toast('Partita spostata')
     chiudiSposta()
@@ -126,43 +131,37 @@ export function CalendarScreen() {
       )}
 
       {inSpostamento && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Sposta partita">
-          <div className="modal-panel">
-            <div className="modal-head">
-              <h2>
-                {nomeSquadra(inSpostamento.teamAId, teamNames)} vs {nomeSquadra(inSpostamento.teamBId, teamNames)}
-              </h2>
-              <Button type="button" variant="ghost" onClick={chiudiSposta}>
-                Annulla
-              </Button>
-            </div>
-            <label className="field" htmlFor="sposta-orario">
-              <span className="field-label">Orario</span>
-              <input
-                id="sposta-orario"
-                className="field-input"
-                type="datetime-local"
-                value={nuovoOrario}
-                onChange={(e) => setNuovoOrario(e.target.value)}
-              />
-            </label>
-            <label className="field" htmlFor="sposta-campo">
-              <span className="field-label">Campo</span>
-              <input
-                id="sposta-campo"
-                className="field-input"
-                type="text"
-                value={nuovoCampo}
-                onChange={(e) => setNuovoCampo(e.target.value)}
-              />
-            </label>
-            <div className="score-control-actions">
-              <Button type="button" onClick={handleSalvaSposta}>
-                Salva
-              </Button>
-            </div>
+        <Modal
+          open
+          titolo={`${nomeSquadra(inSpostamento.teamAId, teamNames)} vs ${nomeSquadra(inSpostamento.teamBId, teamNames)}`}
+          onClose={chiudiSposta}
+        >
+          <label className="field" htmlFor="sposta-orario">
+            <span className="field-label">Orario</span>
+            <input
+              id="sposta-orario"
+              className="field-input"
+              type="datetime-local"
+              value={nuovoOrario}
+              onChange={(e) => setNuovoOrario(e.target.value)}
+            />
+          </label>
+          <label className="field" htmlFor="sposta-campo">
+            <span className="field-label">Campo</span>
+            <input
+              id="sposta-campo"
+              className="field-input"
+              type="text"
+              value={nuovoCampo}
+              onChange={(e) => setNuovoCampo(e.target.value)}
+            />
+          </label>
+          <div className="score-control-actions">
+            <Button type="button" onClick={handleSalvaSposta}>
+              Salva
+            </Button>
           </div>
-        </div>
+        </Modal>
       )}
     </section>
   )

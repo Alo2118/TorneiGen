@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import { ToastProvider } from '../components/Toast'
+import { ToastProvider, Toaster } from '../components/Toast'
 import { db } from '../db/database'
 import { saveTournament } from '../db/repositories'
 import { CalendarScreen } from './CalendarScreen'
@@ -35,6 +35,43 @@ describe('CalendarScreen', () => {
     )
     await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
     expect(await screen.findByText('Alfa')).toBeInTheDocument()
+    const m1 = await db.matches.get('m1')
+    expect(m1?.orario).toBeTruthy()
+  })
+
+  it('apre il dialog Sposta con il focus dentro il pannello', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/calendario']}>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/calendario" element={<CalendarScreen />} /></Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /sposta/i }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toContainElement(document.activeElement as HTMLElement)
+  })
+
+  it('non salva se il campo orario viene svuotato (mostra un errore)', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/calendario']}>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/calendario" element={<CalendarScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /sposta/i }))
+
+    const inputOrario = screen.getByLabelText(/orario/i)
+    await userEvent.clear(inputOrario)
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+
+    expect(await screen.findByText(/inserisci un orario valido/i)).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
     const m1 = await db.matches.get('m1')
     expect(m1?.orario).toBeTruthy()
   })
