@@ -13,7 +13,7 @@ const t: Tournament = {
 }
 
 describe('RegistrationsAdminScreen', () => {
-  beforeEach(async () => { localStorage.clear(); await db.tournaments.clear(); await saveTournament(t); localStorage.setItem('readToken', 'tok') })
+  beforeEach(async () => { localStorage.clear(); await db.tournaments.clear(); await db.teams.clear(); await saveTournament(t); localStorage.setItem('readToken', 'tok') })
   afterEach(() => vi.restoreAllMocks())
 
   it('apre le iscrizioni pubblicando il riepilogo e mostra il link', async () => {
@@ -29,5 +29,27 @@ describe('RegistrationsAdminScreen', () => {
     // ha chiamato POST /api/torneo con auth
     const call = (f.mock.calls as unknown[][]).find((c) => String(c[0]).endsWith('/api/torneo'))
     expect(call).toBeTruthy()
+  })
+
+  it('scarica le iscrizioni e importa le squadre selezionate', async () => {
+    const risposte = [
+      // prima chiamata: elencaIscrizioni
+      { status: 200, body: { iscrizioni: [{ id: '1', codice: 'ABC123', nomeSquadra: 'Squali', createdAt: '', giocatori: [{ nome: 'A', cognome: 'B', email: 'a@x.it', telefono: '1' }, { nome: 'C', cognome: 'D', email: 'c@x.it', telefono: '2' }] }] } },
+    ]
+    let i = 0
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      const r = risposte[Math.min(i, risposte.length - 1)]; i++
+      return new Response(JSON.stringify(r.body), { status: r.status, headers: { 'content-type': 'application/json' } })
+    }))
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/iscrizioni']}>
+        <Routes><Route path="/tornei/:id/iscrizioni" element={<RegistrationsAdminScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /scarica iscrizioni/i }))
+    expect(await screen.findByText('Squali')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /importa/i }))
+    const teams = await db.teams.where('tournamentId').equals('t1').toArray()
+    expect(teams.some((t) => t.nome === 'Squali' && t.origine === 'online' && t.stato === 'in_attesa')).toBe(true)
   })
 })

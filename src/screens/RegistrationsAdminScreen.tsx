@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { getTournament } from '../db/repositories'
+import { db } from '../db/database'
+import { getTournament, teamsOf } from '../db/repositories'
 import { getClient, getReadToken } from '../services/config'
+import { nuoveIscrizioni, iscrizioneATeam } from '../services/import'
 import { Button } from '../components/Button'
-import type { Riepilogo } from '../types/registrations'
+import type { Riepilogo, Iscrizione } from '../types/registrations'
 
 export function RegistrationsAdminScreen() {
   const { id } = useParams()
@@ -14,6 +16,12 @@ export function RegistrationsAdminScreen() {
   const [caricando, setCaricando] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const [copiato, setCopiato] = useState(false)
+
+  const [daImportare, setDaImportare] = useState<Iscrizione[] | null>(null)
+  const [selezionate, setSelezionate] = useState<Set<string>>(new Set())
+  const [scaricando, setScaricando] = useState(false)
+  const [erroreImport, setErroreImport] = useState<string | null>(null)
+  const [importate, setImportate] = useState<number | null>(null)
 
   if (!id || !torneo) return null
 
@@ -49,6 +57,44 @@ export function RegistrationsAdminScreen() {
     if (!navigator.clipboard) return
     await navigator.clipboard.writeText(linkPubblico)
     setCopiato(true)
+  }
+
+  async function scaricaIscrizioni() {
+    if (!torneo || !id) return
+    setScaricando(true)
+    setErroreImport(null)
+    setImportate(null)
+    try {
+      const tutte = await getClient().elencaIscrizioni(torneo.codiceIscrizione)
+      const esistenti = await teamsOf(id)
+      const nuove = nuoveIscrizioni(tutte, esistenti)
+      setDaImportare(nuove)
+      setSelezionate(new Set(nuove.map((i) => i.id)))
+    } catch (err) {
+      setErroreImport(err instanceof Error ? err.message : 'Errore imprevisto')
+      setDaImportare(null)
+    } finally {
+      setScaricando(false)
+    }
+  }
+
+  function toggleSelezione(iscrizioneId: string) {
+    setSelezionate((prev) => {
+      const next = new Set(prev)
+      if (next.has(iscrizioneId)) next.delete(iscrizioneId)
+      else next.add(iscrizioneId)
+      return next
+    })
+  }
+
+  async function importaSelezionate() {
+    if (!id || !daImportare) return
+    const scelte = daImportare.filter((i) => selezionate.has(i.id))
+    if (scelte.length === 0) return
+    await db.teams.bulkPut(scelte.map((i) => iscrizioneATeam(i, id)))
+    setImportate(scelte.length)
+    setDaImportare(null)
+    setSelezionate(new Set())
   }
 
   return (
@@ -93,6 +139,57 @@ export function RegistrationsAdminScreen() {
           {copiato && <span className="muted" role="status">Copiato</span>}
         </div>
       )}
+
+      <div className="registrations-import">
+        <h2>Iscrizioni ricevute</h2>
+        <div className="registrations-actions">
+          <Button variant="ghost" onClick={scaricaIscrizioni} disabled={scaricando || tokenMancante}>
+            Scarica iscrizioni
+          </Button>
+        </div>
+
+        {erroreImport && (
+          <p className="field-error" role="alert">
+            {erroreImport}
+          </p>
+        )}
+
+        {importate !== null && (
+          <p className="muted" role="status">
+            {importate} squadre importate
+          </p>
+        )}
+
+        {daImportare && daImportare.length === 0 && (
+          <p className="muted">Nessuna nuova iscrizione</p>
+        )}
+
+        {daImportare && daImportare.length > 0 && (
+          <>
+            <ul className="registrations-import-list">
+              {daImportare.map((i) => (
+                <li key={i.id} className="registrations-import-item">
+                  <label className="field field-checkbox">
+                    <input
+                      type="checkbox"
+                      className="field-input"
+                      checked={selezionate.has(i.id)}
+                      onChange={() => toggleSelezione(i.id)}
+                    />
+                    <span className="field-label">{i.nomeSquadra}</span>
+                  </label>
+                  <span className="muted">{i.giocatori.map((g) => `${g.nome} ${g.cognome}`).join(', ')}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="registrations-actions">
+              <Button onClick={importaSelezionate} disabled={selezionate.size === 0}>
+                Importa selezionate
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
     </section>
   )
 }
