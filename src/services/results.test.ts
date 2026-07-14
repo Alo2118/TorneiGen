@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applicaRisultato, propagaTabellone } from './results'
+import { applicaRisultato, propagaTabellone, propagaDoppia } from './results'
 import { generaTorneo } from './generation'
 import type { Match, RegolePunteggio, Tournament, Team } from '../engine/types'
 
@@ -109,5 +109,29 @@ describe('propagaTabellone integrazione con generaTorneo (bye reale)', () => {
 
     // la squadra in bye deve essere ancora presente nel tabellone dopo la propagazione
     expect([finale.teamAId, finale.teamBId]).toContain(teamInBye)
+  })
+})
+
+function doppia(id: string, tipo: 'vincenti' | 'perdenti' | 'finale', round: number, index: number, a: string | null, b: string | null, vinc?: { matchId: string; slot: 'A' | 'B' } | null, perd?: { matchId: string; slot: 'A' | 'B' } | null): Match {
+  return { id, tournamentId: 't1', fase: 'tabellone', tabelloneTipo: tipo, round, posizioneTabellone: index, teamAId: a, teamBId: b, set: [], stato: 'programmata', vincitoreVerso: vinc ?? null, perdenteVerso: perd ?? null }
+}
+
+describe('propagaDoppia', () => {
+  it('il perdente di un match WB scende nello slot LB indicato', () => {
+    const wb = { ...doppia('wb-r1-i0', 'vincenti', 1, 0, 'A', 'B', { matchId: 'wb-r2-i0', slot: 'A' }, { matchId: 'lb-r1-i0', slot: 'A' }), set: [{ puntiA: 21, puntiB: 10 }] }
+    const lb = doppia('lb-r1-i0', 'perdenti', 1, 0, null, null)
+    const wbf = doppia('wb-r2-i0', 'vincenti', 2, 0, null, null)
+    const out = propagaDoppia([wb, lb, wbf], r)
+    expect(out.find((m) => m.id === 'lb-r1-i0')!.teamAId).toBe('B') // B ha perso -> LB
+    expect(out.find((m) => m.id === 'wb-r2-i0')!.teamAId).toBe('A') // A ha vinto -> WB
+  })
+
+  it('ri-modifica: cambiando il risultato, vincitore e perdente si ricollocano', () => {
+    const wb = { ...doppia('wb-r1-i0', 'vincenti', 1, 0, 'A', 'B', { matchId: 'wb-r2-i0', slot: 'A' }, { matchId: 'lb-r1-i0', slot: 'A' }), set: [{ puntiA: 10, puntiB: 21 }] }
+    const lb = { ...doppia('lb-r1-i0', 'perdenti', 1, 0, 'A', null), }
+    const wbf = { ...doppia('wb-r2-i0', 'vincenti', 2, 0, 'A', null) }
+    const out = propagaDoppia([wb, lb, wbf], r)
+    expect(out.find((m) => m.id === 'lb-r1-i0')!.teamAId).toBe('A') // ora A ha perso
+    expect(out.find((m) => m.id === 'wb-r2-i0')!.teamAId).toBe('B') // ora B ha vinto
   })
 })

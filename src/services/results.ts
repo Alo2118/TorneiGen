@@ -53,3 +53,45 @@ export function propagaTabellone(matches: Match[], regole: RegolePunteggio): Mat
   const aggiornati = new Map(lista.map((m) => [m.id, m]))
   return matches.map((m) => aggiornati.get(m.id) ?? m)
 }
+
+export function propagaDoppia(matches: Match[], regole: RegolePunteggio): Match[] {
+  const tab = matches.filter((m) => m.fase === 'tabellone')
+  if (tab.length === 0) return matches
+  const byId = new Map(tab.map((m) => [m.id, { ...m }]))
+
+  // slot alimentati da un feed (da azzerare prima del ricalcolo)
+  const target = new Set<string>()
+  for (const m of byId.values()) {
+    if (m.vincitoreVerso) target.add(`${m.vincitoreVerso.matchId}:${m.vincitoreVerso.slot}`)
+    if (m.perdenteVerso) target.add(`${m.perdenteVerso.matchId}:${m.perdenteVerso.slot}`)
+  }
+  for (const m of byId.values()) {
+    if (target.has(`${m.id}:A`)) m.teamAId = null
+    if (target.has(`${m.id}:B`)) m.teamBId = null
+  }
+
+  const peso = (m: Match) =>
+    (m.tabelloneTipo === 'vincenti' ? 0 : m.tabelloneTipo === 'perdenti' ? 1 : 2) * 100000 +
+    (m.round ?? 0) * 1000 + (m.posizioneTabellone ?? 0)
+  const lista = [...byId.values()].sort((a, b) => peso(a) - peso(b))
+
+  const metti = (ref: { matchId: string; slot: 'A' | 'B' } | null | undefined, team: string | null) => {
+    if (!ref || !team) return
+    const t = byId.get(ref.matchId)
+    if (!t) return
+    if (ref.slot === 'A') t.teamAId = team
+    else t.teamBId = team
+  }
+
+  for (const m of lista) {
+    const o = matchOutcome(m.set, regole)
+    if (!o.completa) continue
+    const vincitore = o.vincitore === 'A' ? m.teamAId : m.teamBId
+    const perdente = o.vincitore === 'A' ? m.teamBId : m.teamAId
+    metti(m.vincitoreVerso, vincitore)
+    metti(m.perdenteVerso, perdente)
+  }
+
+  const agg = new Map([...byId.values()].map((m) => [m.id, m]))
+  return matches.map((m) => agg.get(m.id) ?? m)
+}
