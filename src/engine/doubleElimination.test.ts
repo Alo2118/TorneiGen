@@ -1,0 +1,35 @@
+import { describe, it, expect } from 'vitest'
+import { generateDoubleElimination } from './doubleElimination'
+
+describe('generateDoubleElimination', () => {
+  it('4 squadre: WB 3 match, LB 2 match, 1 finale', () => {
+    const b = generateDoubleElimination(['A', 'B', 'C', 'D'])
+    expect(b.filter((m) => m.tabelloneTipo === 'vincenti')).toHaveLength(3)
+    expect(b.filter((m) => m.tabelloneTipo === 'perdenti')).toHaveLength(2)
+    expect(b.filter((m) => m.tabelloneTipo === 'finale')).toHaveLength(1)
+  })
+
+  it('8 squadre: WB 7, LB 6, finale 1 (totale 14 = 2N-2)', () => {
+    const b = generateDoubleElimination(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'])
+    expect(b.filter((m) => m.tabelloneTipo === 'vincenti')).toHaveLength(7)
+    expect(b.filter((m) => m.tabelloneTipo === 'perdenti')).toHaveLength(6)
+    expect(b.filter((m) => m.tabelloneTipo === 'finale')).toHaveLength(1)
+    expect(b).toHaveLength(14)
+  })
+
+  it('il perdente del WB round 1 finisce in uno slot LB', () => {
+    const b = generateDoubleElimination(['A', 'B', 'C', 'D'])
+    const wb1 = b.filter((m) => m.tabelloneTipo === 'vincenti' && m.round === 1)
+    expect(wb1.every((m) => m.loserFeeds && m.loserFeeds.matchId.startsWith('lb-'))).toBe(true)
+  })
+
+  it('il vincitore del WB finale e del LB finale vanno alla finale', () => {
+    const b = generateDoubleElimination(['A', 'B', 'C', 'D'])
+    const wbFin = b.find((m) => m.tabelloneTipo === 'vincenti' && m.winnerFeeds?.matchId === 'gf')
+    const lbFin = b.find((m) => m.tabelloneTipo === 'perdenti' && m.winnerFeeds?.matchId === 'gf')
+    expect(wbFin).toBeTruthy()
+    expect(lbFin).toBeTruthy()
+    expect(wbFin!.winnerFeeds!.slot).toBe('A')
+    expect(lbFin!.winnerFeeds!.slot).toBe('B')
+  })
+})
