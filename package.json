@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "mock:api": "npx tsx worker/mock-server.mjs"
+    "mock:api": "npx tsx worker/mock-server.mjs",
+    "deploy:worker": "wrangler deploy --config worker/wrangler.toml",
+    "deploy:web": "vite build && wrangler pages deploy dist --project-name=torneigen"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
@@ -37,6 +39,7 @@
     "tsx": "^4.23.1",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.110.0"
   }
 }
