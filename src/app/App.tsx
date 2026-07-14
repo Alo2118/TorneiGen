@@ -7,10 +7,12 @@ import { BracketScreen } from '../screens/BracketScreen'
 import { StandingsScreen } from '../screens/StandingsScreen'
 import { RegistrationsAdminScreen } from '../screens/RegistrationsAdminScreen'
 import { SettingsScreen } from '../screens/SettingsScreen'
+import { RegistrationScreen } from '../screens/RegistrationScreen'
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/iscrizione/:codice" element={<RegistrationScreen />} />
       <Route element={<AppShell />}>
         <Route index element={<HomeScreen />} />
         <Route path="tornei/nuovo" element={<SetupScreen />} />
