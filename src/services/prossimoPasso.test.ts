@@ -22,4 +22,7 @@ describe('prossimoPasso', () => {
     const m = { id: 'm', tournamentId: 't1', fase: 'girone' as const, round: 1, teamAId: 'a', teamBId: 'b', set: [], stato: 'programmata' as const }
     expect(prossimoPasso(t, [team('a', 'confermata'), team('b', 'confermata')], [m]).azione).toBe('punteggi')
   })
+  it('una sola squadra confermata → aspetta altre (squadre)', () => {
+    expect(prossimoPasso(t, [team('a', 'confermata')], []).azione).toBe('squadre')
+  })
 })
