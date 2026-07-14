@@ -80,4 +80,25 @@ describe('BracketScreen', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(document.activeElement).toBe(trigger)
   })
+
+  it('genera usando solo le squadre confermate', async () => {
+    // 3 confermate + 1 in attesa
+    await db.teams.bulkPut([
+      { id: 'A', tournamentId: 't1', nome: 'A', stato: 'confermata', origine: 'manuale', players: [] },
+      { id: 'B', tournamentId: 't1', nome: 'B', stato: 'confermata', origine: 'manuale', players: [] },
+      { id: 'C', tournamentId: 't1', nome: 'C', stato: 'confermata', origine: 'manuale', players: [] },
+      { id: 'D', tournamentId: 't1', nome: 'D', stato: 'in_attesa', origine: 'online', players: [] },
+    ])
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
+        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /genera/i }))
+    await waitFor(async () => {
+      const matches = await db.matches.where('tournamentId').equals('t1').toArray()
+      // 3 squadre confermate a girone all'italiana = 3 partite (D esclusa)
+      expect(matches.length).toBe(3)
+    })
+  })
 })

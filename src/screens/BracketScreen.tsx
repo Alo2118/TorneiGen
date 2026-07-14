@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament, teamsOf, groupsOf, matchesOf, replaceGenerated, saveTournament } from '../db/repositories'
 import { generaTorneo } from '../services/generation'
@@ -89,16 +89,22 @@ export function BracketScreen() {
 
   const isKotc = torneo.formato === 'king_of_the_court'
   const teamNames: Record<string, string> = Object.fromEntries(teams.map((t) => [t.id, t.nome]))
+  const confermate = teams.filter((t) => t.stato === 'confermata')
+  const inAttesa = teams.filter((t) => t.stato === 'in_attesa')
 
   async function handleGenera() {
     if (!torneo) return
+    if (confermate.length < 2) {
+      setErrore('Servono almeno due squadre confermate per generare il calendario.')
+      return
+    }
     if (matches.length > 0) {
       if (!window.confirm('Rigenerare il calendario? Le partite esistenti verranno sostituite.')) return
     }
     setErrore(null)
     setGenerando(true)
     try {
-      const { groups: nuoviGruppi, matches: nuovePartite } = generaTorneo(torneo, teams)
+      const { groups: nuoviGruppi, matches: nuovePartite } = generaTorneo(torneo, confermate)
       await replaceGenerated(torneo.id, nuoviGruppi, nuovePartite)
       await saveTournament({ ...torneo, stato: 'in_corso' })
     } catch (e) {
@@ -123,14 +129,25 @@ export function BracketScreen() {
       <header className="bracket-head">
         <h1>Calendario / Tabellone</h1>
         <div className="bracket-head-actions">
-          <Button type="button" onClick={handleGenera} disabled={isKotc || generando || teams.length < 2}>
+          <Button type="button" onClick={handleGenera} disabled={isKotc || generando || confermate.length < 2}>
             {matches.length > 0 ? 'Rigenera' : 'Genera'}
           </Button>
         </div>
       </header>
 
       {isKotc && <p className="muted">King of the Court non è ancora disponibile (in arrivo prossimamente).</p>}
-      {!isKotc && teams.length < 2 && <p className="muted">Servono almeno due squadre per generare il calendario.</p>}
+      {!isKotc && confermate.length < 2 && (
+        <p className="muted">Servono almeno due squadre confermate per generare il calendario.</p>
+      )}
+      {!isKotc && inAttesa.length > 0 && (
+        <p className="muted">
+          {inAttesa.length === 1
+            ? '1 squadra in attesa non inclusa nel calendario'
+            : `${inAttesa.length} squadre in attesa non incluse nel calendario`}
+          {' — confermale nella schermata '}
+          <Link to={`/tornei/${id}/squadre`}>Squadre</Link>.
+        </p>
+      )}
       {errore && (
         <p className="field-error" role="alert">
           {errore}
