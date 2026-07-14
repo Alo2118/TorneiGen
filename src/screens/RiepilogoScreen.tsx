@@ -1,7 +1,12 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../db/database'
 import { getTournament, teamsOf, matchesOf } from '../db/repositories'
 import { prossimoPasso } from '../services/prossimoPasso'
+import { getClient, getReadToken } from '../services/config'
+import { nuoveIscrizioni, iscrizioneATeam } from '../services/import'
+import { useToast } from '../components/Toast'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 
@@ -26,12 +31,54 @@ export function RiepilogoScreen() {
   const torneo = useLiveQuery(() => (id ? getTournament(id) : undefined), [id])
   const teams = useLiveQuery(() => teamsOf(id ?? ''), [id], [])
   const matches = useLiveQuery(() => matchesOf(id ?? ''), [id], [])
+  const toast = useToast()
+  const [sincronizzando, setSincronizzando] = useState(false)
+  const primoSync = useRef<string | null>(null)
+
+  async function sincronizzaIscrizioni(codice: string, tournamentId: string, annullato: () => boolean) {
+    if (!getReadToken()) return
+    setSincronizzando(true)
+    try {
+      const tutte = await getClient().elencaIscrizioni(codice)
+      const esistenti = await teamsOf(tournamentId)
+      const nuove = nuoveIscrizioni(tutte, esistenti)
+      if (nuove.length > 0) {
+        await db.teams.bulkPut(nuove.map((i) => iscrizioneATeam(i, tournamentId)))
+      }
+      if (!annullato() && nuove.length > 0) toast(`${nuove.length} nuove iscrizioni`)
+    } catch (err) {
+      if (annullato()) return
+      if (err instanceof Error && err.message === 'non autorizzato') {
+        toast('Token non valido: controlla le impostazioni.', 'errore')
+      }
+      // altri errori: silenziati, non bloccare l'apertura del riepilogo
+    } finally {
+      if (!annullato()) setSincronizzando(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!id || !torneo || !torneo.codiceIscrizione) return
+    if (primoSync.current === id) return
+    primoSync.current = id
+    let annullato = false
+    void sincronizzaIscrizioni(torneo.codiceIscrizione, id, () => annullato)
+    return () => {
+      annullato = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, torneo?.codiceIscrizione])
 
   if (!id || !torneo) return null
 
   const confermate = teams.filter((sq) => sq.stato === 'confermata').length
   const inAttesa = teams.filter((sq) => sq.stato === 'in_attesa').length
   const passo = prossimoPasso(torneo, teams, matches)
+
+  async function confermaTutte() {
+    await db.teams.where({ tournamentId: id, stato: 'in_attesa' }).modify({ stato: 'confermata' })
+    toast('Squadre confermate')
+  }
 
   return (
     <section className="riepilogo">
@@ -70,6 +117,23 @@ export function RiepilogoScreen() {
         <Link to={passo.rotta}>
           <Button>{AZIONE_LABEL[passo.azione] ?? 'Vai'}</Button>
         </Link>
+      </div>
+
+      <div className="registrations-actions">
+        <Button
+          variant="ghost"
+          disabled={sincronizzando || !getReadToken()}
+          onClick={() => {
+            if (torneo.codiceIscrizione) void sincronizzaIscrizioni(torneo.codiceIscrizione, id, () => false)
+          }}
+        >
+          Aggiorna iscrizioni
+        </Button>
+        {inAttesa > 0 && (
+          <Button variant="ghost" onClick={confermaTutte}>
+            Conferma tutte
+          </Button>
+        )}
       </div>
     </section>
   )
