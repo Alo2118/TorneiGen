@@ -21,4 +21,15 @@ describe('salvaEProppaga', () => {
     await db.matches.bulkPut([tab('s1', 1, 0, 'A', 'B')])
     await expect(salvaEProppaga('t1', 'inesistente', [{ puntiA: 21, puntiB: 10 }], r)).rejects.toThrow()
   })
+
+  it('doppia: salvare un risultato WB fa scendere il perdente nel LB', async () => {
+    await db.matches.bulkPut([
+      { id: 'wb-r1-i0', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'vincenti', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [], stato: 'programmata', vincitoreVerso: { matchId: 'wb-r2-i0', slot: 'A' }, perdenteVerso: { matchId: 'lb-r1-i0', slot: 'A' } },
+      { id: 'lb-r1-i0', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'perdenti', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata', vincitoreVerso: null, perdenteVerso: null },
+      { id: 'wb-r2-i0', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'vincenti', round: 2, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata', vincitoreVerso: null, perdenteVerso: null },
+    ])
+    await salvaEProppaga('t1', 'wb-r1-i0', [{ puntiA: 21, puntiB: 10 }], r)
+    expect((await db.matches.get('lb-r1-i0'))?.teamAId).toBe('B')
+    expect((await db.matches.get('wb-r2-i0'))?.teamAId).toBe('A')
+  })
 })

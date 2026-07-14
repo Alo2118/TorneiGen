@@ -1,6 +1,6 @@
 import type { SetScore, RegolePunteggio } from '../engine/types'
 import { db } from '../db/database'
-import { applicaRisultato, propagaTabellone } from './results'
+import { applicaRisultato, propagaTabellone, propagaDoppia } from './results'
 
 export async function salvaEProppaga(
   tournamentId: string,
@@ -13,6 +13,7 @@ export async function salvaEProppaga(
   if (!target) throw new Error(`Partita ${matchId} non trovata`)
   const aggiornato = applicaRisultato(target, set, regole)
   const conRisultato = matches.map((m) => (m.id === matchId ? aggiornato : m))
-  const finali = propagaTabellone(conRisultato, regole)
+  const doppia = matches.some((m) => m.tabelloneTipo !== undefined)
+  const finali = doppia ? propagaDoppia(conRisultato, regole) : propagaTabellone(conRisultato, regole)
   await db.matches.bulkPut(finali)
 }
