@@ -87,6 +87,23 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   color: var(--win);
 }
 
+/* --- Verifica connessione (Impostazioni) --- */
+.verifica-esito {
+  margin: 0;
+  padding: calc(var(--space) * 1.5) calc(var(--space) * 2);
+  border-radius: var(--radius);
+  font-size: .875rem;
+  font-weight: 500;
+}
+.verifica-esito-ok {
+  background: color-mix(in srgb, var(--win) 12%, var(--surface));
+  color: var(--win);
+}
+.verifica-esito-errore {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+}
+
 /* --- Home / cards --- */
 .home {
   padding: calc(var(--space) * 3);
