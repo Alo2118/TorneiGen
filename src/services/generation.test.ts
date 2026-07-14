@@ -44,4 +44,22 @@ describe('generaTorneo', () => {
     const t = { ...base, formato: 'king_of_the_court' as const }
     expect(() => generaTorneo(t, [team('A')])).toThrow(/King of the Court/i)
   })
+
+  it('eliminazione doppia: crea match WB, LB e finale con i tipi', () => {
+    const t = { ...base, formato: 'eliminazione_doppia' as const }
+    const teams = [team('S1', 1), team('S2', 2), team('S3', 3), team('S4', 4)]
+    const { matches } = generaTorneo(t, teams)
+    expect(matches.some((m) => m.tabelloneTipo === 'vincenti')).toBe(true)
+    expect(matches.some((m) => m.tabelloneTipo === 'perdenti')).toBe(true)
+    expect(matches.filter((m) => m.tabelloneTipo === 'finale')).toHaveLength(1)
+    // i link sono persistiti
+    const wb1 = matches.find((m) => m.tabelloneTipo === 'vincenti' && m.round === 1)!
+    expect(wb1.perdenteVerso).toBeTruthy()
+  })
+
+  it('eliminazione doppia: richiede numero di squadre potenza di 2', () => {
+    const t = { ...base, formato: 'eliminazione_doppia' as const }
+    const teams = [team('S1', 1), team('S2', 2), team('S3', 3)]
+    expect(() => generaTorneo(t, teams)).toThrow(/potenza di 2/i)
+  })
 })

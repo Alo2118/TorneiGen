@@ -1,6 +1,7 @@
 import type { Tournament, Team, Group, Match } from '../engine/types'
 import { generateRoundRobin } from '../engine/roundRobin'
 import { generateSingleElimination, resolveByes } from '../engine/bracket'
+import { generateDoubleElimination } from '../engine/doubleElimination'
 import { splitIntoGroups } from '../engine/groups'
 import { newId } from '../engine/id'
 
@@ -45,6 +46,25 @@ function eliminazioneDiretta(t: Tournament, teams: Team[]): EsitoGenerazione {
   return { groups: [], matches }
 }
 
+function isPotenzaDi2(n: number): boolean {
+  return n >= 2 && (n & (n - 1)) === 0
+}
+
+function eliminazioneDoppia(t: Tournament, teams: Team[]): EsitoGenerazione {
+  if (!isPotenzaDi2(teams.length)) {
+    throw new Error('L\'eliminazione doppia richiede un numero di squadre potenza di 2 (4, 8, 16, ...)')
+  }
+  const ids = [...teams].sort((a, b) => (a.testaDiSerie ?? 999) - (b.testaDiSerie ?? 999)).map((x) => x.id)
+  const bracket = generateDoubleElimination(ids)
+  const matches: Match[] = bracket.map((bm) => ({
+    id: bm.id, tournamentId: t.id, fase: 'tabellone', tabelloneTipo: bm.tabelloneTipo,
+    round: bm.round, posizioneTabellone: bm.index, teamAId: bm.teamAId, teamBId: bm.teamBId,
+    set: [], stato: 'programmata',
+    vincitoreVerso: bm.winnerFeeds, perdenteVerso: bm.loserFeeds,
+  }))
+  return { groups: [], matches }
+}
+
 export function generaTorneo(torneo: Tournament, teams: Team[]): EsitoGenerazione {
   switch (torneo.formato) {
     case 'girone_italiana': {
@@ -55,6 +75,8 @@ export function generaTorneo(torneo: Tournament, teams: Team[]): EsitoGenerazion
       return gironi(torneo, teams, NUM_GIRONI_DEFAULT)
     case 'eliminazione_diretta':
       return eliminazioneDiretta(torneo, teams)
+    case 'eliminazione_doppia':
+      return eliminazioneDoppia(torneo, teams)
     case 'king_of_the_court':
       throw new Error('King of the Court non ancora disponibile')
     default:
