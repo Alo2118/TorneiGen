@@ -10,6 +10,10 @@ export function prossimoPasso(
   const r = (suffix: string) => `/tornei/${t.id}/${suffix}`
 
   if (matches.length > 0) {
+    const daProgrammare = !!t.giornate && t.giornate.length > 0 && matches.every((m) => !m.orario)
+    if (daProgrammare) {
+      return { testo: 'Programma il calendario delle partite.', azione: 'calendario', rotta: r('calendario') }
+    }
     return { testo: 'Inserisci i risultati delle partite.', azione: 'punteggi', rotta: r('tabellone') }
   }
   if (teams.length === 0) {

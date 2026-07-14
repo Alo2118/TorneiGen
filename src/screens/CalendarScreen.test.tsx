@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider, Toaster } from '../components/Toast'
@@ -52,6 +52,32 @@ describe('CalendarScreen', () => {
 
     const dialog = screen.getByRole('dialog')
     expect(dialog).toContainElement(document.activeElement as HTMLElement)
+  })
+
+  it('sposta manualmente una partita e persiste orario/campo nel db', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/calendario']}>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/calendario" element={<CalendarScreen />} /></Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /sposta/i }))
+
+    const inputOrario = screen.getByLabelText(/orario/i)
+    await userEvent.clear(inputOrario)
+    await userEvent.type(inputOrario, '2026-09-05T20:30')
+    const inputCampo = screen.getByLabelText(/campo/i)
+    await userEvent.clear(inputCampo)
+    await userEvent.type(inputCampo, 'Campo 2')
+
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const m1 = await db.matches.get('m1')
+    expect(m1?.orario).toBe('2026-09-05T20:30')
+    expect(m1?.campo).toBe('Campo 2')
   })
 
   it('non salva se il campo orario viene svuotato (mostra un errore)', async () => {

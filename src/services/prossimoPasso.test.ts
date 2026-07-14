@@ -25,4 +25,9 @@ describe('prossimoPasso', () => {
   it('una sola squadra confermata → aspetta altre (squadre)', () => {
     expect(prossimoPasso(t, [team('a', 'confermata')], []).azione).toBe('squadre')
   })
+  it('giornate configurate + match senza orario → calendario', () => {
+    const tConGiornate: Tournament = { ...t, giornate: [{ data: '2026-09-04', inizio: '19:00', fine: '23:00' }] }
+    const m = { id: 'm', tournamentId: 't1', fase: 'girone' as const, round: 1, teamAId: 'a', teamBId: 'b', set: [], stato: 'programmata' as const }
+    expect(prossimoPasso(tConGiornate, [team('a', 'confermata'), team('b', 'confermata')], [m]).azione).toBe('calendario')
+  })
 })

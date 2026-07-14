@@ -53,7 +53,11 @@ export function RiepilogoScreen() {
       }
       // altri errori: silenziati, non bloccare l'apertura del riepilogo
     } finally {
-      if (!annullato()) setSincronizzando(false)
+      // Reset sempre il flag di caricamento: uno setState dopo l'unmount è un
+      // no-op sicuro in React 18. In StrictMode dev (mount→cleanup→remount) il
+      // primo sync viene annullato, ma il flag deve comunque tornare a false
+      // altrimenti il pulsante "Aggiorna iscrizioni" resta bloccato disabilitato.
+      setSincronizzando(false)
     }
   }
 
