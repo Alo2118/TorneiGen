@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Field } from '../components/Field'
 import { Button } from '../components/Button'
+import { Badge } from '../components/Badge'
 import { db } from '../db/database'
 import { teamsOf, getTournament } from '../db/repositories'
 import { newId } from '../engine/id'
@@ -67,6 +68,10 @@ export function TeamsScreen() {
     await db.teams.put({ ...team, testaDiSerie })
   }
 
+  async function handleConfirm(teamId: string) {
+    await db.teams.update(teamId, { stato: 'confermata' })
+  }
+
   async function handleRemove(teamId: string) {
     if (!window.confirm('Rimuovere questa squadra?')) return
     await db.teams.delete(teamId)
@@ -114,7 +119,14 @@ export function TeamsScreen() {
             <li key={team.id} className="team-card">
               <div className="team-card-head">
                 <h3>{team.nome}</h3>
-                <span className="badge">{team.players.length} giocatori</span>
+                <div className="team-card-badges">
+                  <Badge>{team.players.length} giocatori</Badge>
+                  {team.stato === 'confermata' ? (
+                    <span className="badge badge-confermata">Confermata</span>
+                  ) : (
+                    <span className="badge badge-in-attesa">In attesa</span>
+                  )}
+                </div>
               </div>
               <ul className="player-list">
                 {team.players.map((p, i) => (
@@ -133,6 +145,11 @@ export function TeamsScreen() {
                   onChange={(e) => handleSeed(team, e.target.value)}
                 />
                 <div className="team-card-buttons">
+                  {team.stato === 'in_attesa' && (
+                    <Button type="button" variant="primary" onClick={() => handleConfirm(team.id)}>
+                      Conferma
+                    </Button>
+                  )}
                   <Button type="button" variant="ghost" onClick={() => startEdit(team)}>
                     Modifica
                   </Button>

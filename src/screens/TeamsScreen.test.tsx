@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { db } from '../db/database'
 import { saveTournament } from '../db/repositories'
@@ -25,5 +26,17 @@ describe('TeamsScreen', () => {
       </MemoryRouter>,
     )
     expect(await screen.findByText('Squali')).toBeInTheDocument()
+  })
+
+  it('conferma una squadra in attesa', async () => {
+    await db.teams.put({ id: 'w', tournamentId: 't1', nome: 'Online', stato: 'in_attesa', origine: 'online', players: [{ nome: 'A', cognome: 'B', email: 'a@x.it', telefono: '1' }, { nome: 'C', cognome: 'D', email: 'c@x.it', telefono: '2' }] })
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/squadre']}>
+        <Routes><Route path="/tornei/:id/squadre" element={<TeamsScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /conferma/i }))
+    const t = await db.teams.get('w')
+    expect(t?.stato).toBe('confermata')
   })
 })
