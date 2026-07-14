@@ -71,9 +71,9 @@ export async function handle(req: Request, env: Env): Promise<Response> {
     } catch {
       return json({ error: 'JSON non valido' }, 400)
     }
-    if (!b.nomeSquadra || !Array.isArray(b.giocatori) || b.giocatori.length === 0) return json({ error: 'iscrizione incompleta' }, 400)
+    if (!b.nomeSquadra?.trim() || !Array.isArray(b.giocatori) || b.giocatori.length === 0) return json({ error: 'iscrizione incompleta' }, 400)
     for (const g of b.giocatori) {
-      if (!g.nome || !g.cognome || !g.email || !g.telefono) return json({ error: 'giocatore incompleto' }, 400)
+      if (!g.nome?.trim() || !g.cognome?.trim() || !g.email?.trim() || !g.telefono?.trim()) return json({ error: 'giocatore incompleto' }, 400)
     }
     const id = crypto.randomUUID()
     const iscr: Iscrizione = { id, codice: p2, nomeSquadra: b.nomeSquadra, giocatori: b.giocatori, createdAt: new Date().toISOString() }

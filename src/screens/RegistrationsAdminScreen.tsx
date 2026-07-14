@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
-import { getTournament, teamsOf } from '../db/repositories'
+import { getTournament, teamsOf, saveTournament } from '../db/repositories'
 import { getClient, getReadToken } from '../services/config'
 import { nuoveIscrizioni, iscrizioneATeam } from '../services/import'
 import { Button } from '../components/Button'
@@ -22,6 +22,24 @@ export function RegistrationsAdminScreen() {
   const [scaricando, setScaricando] = useState(false)
   const [erroreImport, setErroreImport] = useState<string | null>(null)
   const [importate, setImportate] = useState<number | null>(null)
+  const [importando, setImportando] = useState(false)
+
+  useEffect(() => {
+    if (!torneo || !torneo.codiceIscrizione) return
+    let cancellato = false
+    getClient()
+      .getRiepilogo(torneo.codiceIscrizione)
+      .then((r) => {
+        if (!cancellato) setRiepilogo(r)
+      })
+      .catch(() => {
+        // non ancora aperto (es. 404): nessun riepilogo pubblicato, nessun errore da mostrare
+      })
+    return () => {
+      cancellato = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [torneo?.codiceIscrizione])
 
   if (!id || !torneo) return null
 
@@ -43,6 +61,11 @@ export function RegistrationsAdminScreen() {
       }
       const salvato = await getClient().pubblicaRiepilogo(r)
       setRiepilogo(salvato)
+      if (!chiuso && torneo.stato === 'bozza') {
+        await saveTournament({ ...torneo, stato: 'iscrizioni_aperte' })
+      } else if (chiuso && torneo.stato === 'iscrizioni_aperte') {
+        await saveTournament({ ...torneo, stato: 'bozza' })
+      }
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore imprevisto')
     } finally {
@@ -91,10 +114,18 @@ export function RegistrationsAdminScreen() {
     if (!id || !daImportare) return
     const scelte = daImportare.filter((i) => selezionate.has(i.id))
     if (scelte.length === 0) return
-    await db.teams.bulkPut(scelte.map((i) => iscrizioneATeam(i, id)))
-    setImportate(scelte.length)
-    setDaImportare(null)
-    setSelezionate(new Set())
+    setImportando(true)
+    setErroreImport(null)
+    try {
+      await db.teams.bulkPut(scelte.map((i) => iscrizioneATeam(i, id)))
+      setImportate(scelte.length)
+      setDaImportare(null)
+      setSelezionate(new Set())
+    } catch (err) {
+      setErroreImport(err instanceof Error ? err.message : 'Errore imprevisto')
+    } finally {
+      setImportando(false)
+    }
   }
 
   return (
@@ -183,7 +214,7 @@ export function RegistrationsAdminScreen() {
               ))}
             </ul>
             <div className="registrations-actions">
-              <Button onClick={importaSelezionate} disabled={selezionate.size === 0}>
+              <Button onClick={importaSelezionate} disabled={selezionate.size === 0 || importando}>
                 Importa selezionate
               </Button>
             </div>

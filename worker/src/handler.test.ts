@@ -70,6 +70,12 @@ describe('handle', () => {
     expect(r.status).toBe(400)
   })
 
+  it('POST iscrizione con nomeSquadra di soli spazi -> 400', async () => {
+    const e = env({ 'torneo:ABC': riepilogo() })
+    const r = await handle(req('POST', '/api/iscrizioni/ABC', { body: { nomeSquadra: '   ', giocatori: [{ nome: 'A', cognome: 'B', email: 'a@x.it', telefono: '1' }] } }), e)
+    expect(r.status).toBe(400)
+  })
+
   it('GET iscrizioni senza token -> 401', async () => {
     const r = await handle(req('GET', '/api/iscrizioni/ABC'), env({ 'torneo:ABC': riepilogo() }))
     expect(r.status).toBe(401)
