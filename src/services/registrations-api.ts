@@ -14,7 +14,7 @@ export function creaClient(config: { baseUrl: string; token?: string }): Registr
   async function call(method: string, path: string, opts: { body?: unknown; auth?: boolean } = {}): Promise<unknown> {
     const headers: Record<string, string> = {}
     if (opts.body !== undefined) headers['content-type'] = 'application/json'
-    if (opts.auth) headers.authorization = `Bearer ${config.token ?? ''}`
+    if (opts.auth && config.token) headers.authorization = `Bearer ${config.token}`
     const res = await fetch(base + path, {
       method,
       headers,

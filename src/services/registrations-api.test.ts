@@ -43,4 +43,12 @@ describe('registrations-api', () => {
     vi.stubGlobal('fetch', mockFetch(401, { error: 'non autorizzato' }))
     await expect(client().elencaIscrizioni('ABC')).rejects.toThrow(/non autorizzato/i)
   })
+
+  it('non invia authorization header quando manca il token', async () => {
+    const f = mockFetch(200, { iscrizioni: [] })
+    vi.stubGlobal('fetch', f)
+    await creaClient({ baseUrl: 'http://api.test' }).elencaIscrizioni('ABC')
+    const opts = (f.mock.calls[0] as unknown[])?.[1] as RequestInit
+    expect((opts.headers as Record<string, string>).authorization).toBeUndefined()
+  })
 })
