@@ -14,6 +14,11 @@ const fromMin = (min: number): string =>
   `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
 
 export function pianifica(partite: Match[], config: CalendarioConfig): Match[] {
+  // Guard: se config non valida, return matches unchanged
+  if (config.durataMin <= 0 || config.numeroCampi <= 0 || config.giornate.length === 0) {
+    return partite.map((mm) => ({ ...mm }))
+  }
+
   // slot disponibili: per giornata, per orario, per campo — ordinati per tempo poi campo
   const slots: { orario: string; campo: number }[] = []
   for (const g of config.giornate) {

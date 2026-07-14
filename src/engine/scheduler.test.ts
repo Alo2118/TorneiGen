@@ -44,4 +44,9 @@ describe('pianifica', () => {
     const r1 = out.find((x) => x.id === '1')!, r2 = out.find((x) => x.id === '2')!
     expect(r1.orario! <= r2.orario!).toBe(true)
   })
+
+  it('evita loop infinito con durataMin <= 0', () => {
+    const out = pianifica([m('1', 'A', 'B')], cfg({ durataMin: 0 }))
+    expect(out[0].orario).toBeUndefined()
+  })
 })
