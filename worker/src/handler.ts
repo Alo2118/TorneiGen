@@ -38,7 +38,12 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   // POST /api/torneo  (organizzatore)
   if (req.method === 'POST' && p1 === 'torneo' && !p2) {
     if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
-    const b = (await req.json()) as Partial<Riepilogo>
+    let b: Partial<Riepilogo>
+    try {
+      b = (await req.json()) as Partial<Riepilogo>
+    } catch {
+      return json({ error: 'JSON non valido' }, 400)
+    }
     if (!b.codice || !b.nome || !b.tipologia) return json({ error: 'dati incompleti' }, 400)
     const riepilogo: Riepilogo = {
       codice: b.codice, nome: b.nome, tipologia: b.tipologia,
@@ -60,7 +65,12 @@ export async function handle(req: Request, env: Env): Promise<Response> {
     const raw = await env.KV.get(`torneo:${p2}`)
     if (!raw) return json({ error: 'torneo non trovato' }, 404)
     if ((JSON.parse(raw) as Riepilogo).chiuso) return json({ error: 'iscrizioni chiuse' }, 403)
-    const b = (await req.json()) as Partial<Iscrizione>
+    let b: Partial<Iscrizione>
+    try {
+      b = (await req.json()) as Partial<Iscrizione>
+    } catch {
+      return json({ error: 'JSON non valido' }, 400)
+    }
     if (!b.nomeSquadra || !Array.isArray(b.giocatori) || b.giocatori.length === 0) return json({ error: 'iscrizione incompleta' }, 400)
     for (const g of b.giocatori) {
       if (!g.nome || !g.cognome || !g.email || !g.telefono) return json({ error: 'giocatore incompleto' }, 400)

@@ -88,4 +88,22 @@ describe('handle', () => {
     expect(r.status).toBe(200)
     expect(await e.KV.get('iscr:ABC:1')).toBeNull()
   })
+
+  it('POST /api/iscrizioni/:codice con body malformato -> 400', async () => {
+    const e = env({ 'torneo:ABC': riepilogo() })
+    const malformedReq = new Request('http://x/api/iscrizioni/ABC', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{not json',
+    })
+    const r = await handle(malformedReq, e)
+    expect(r.status).toBe(400)
+    expect((await r.json()).error).toBe('JSON non valido')
+  })
+
+  it('GET /api/iscrizioni/:codice con token sbagliato -> 401', async () => {
+    const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: { authorization: 'Bearer sbagliato' } }), env({ 'torneo:ABC': riepilogo() }))
+    expect(r.status).toBe(401)
+    expect((await r.json()).error).toBe('non autorizzato')
+  })
 })
