@@ -115,14 +115,50 @@ export function BracketScreen() {
   }
 
   const haGironi = groups.length > 0
+  const haTabelloneTipo = matches.some((m) => m.tabelloneTipo !== undefined)
   const matchPerGirone = haGironi
     ? groups.map((g) => ({ chiave: g.id, titolo: g.nome, partite: matches.filter((m) => m.groupId === g.id) }))
     : []
-  const round = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b)
-  const matchPerRound = !haGironi
-    ? round.map((r) => ({ chiave: String(r), titolo: `Turno ${r}`, partite: matches.filter((m) => m.round === r) }))
-    : []
+  const round =
+    !haGironi && !haTabelloneTipo ? [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b) : []
+  const matchPerRound =
+    !haGironi && !haTabelloneTipo
+      ? round.map((r) => ({ chiave: String(r), titolo: `Turno ${r}`, partite: matches.filter((m) => m.round === r) }))
+      : []
   const gruppiDaMostrare = haGironi ? matchPerGirone : matchPerRound
+
+  function partitePerRound(elenco: Match[]) {
+    const rounds = [...new Set(elenco.map((m) => m.round))].sort((a, b) => a - b)
+    return rounds.map((r) => ({
+      chiave: String(r),
+      titolo: `Turno ${r}`,
+      partite: elenco.filter((m) => m.round === r),
+    }))
+  }
+
+  function renderPartite(partite: Match[]) {
+    return partite.map((m) => (
+      <MatchRow
+        key={m.id}
+        match={m}
+        teamNames={teamNames}
+        onModifica={m.teamAId && m.teamBId ? apriModifica : undefined}
+      />
+    ))
+  }
+
+  function renderGruppi(gruppi: { chiave: string; titolo: string; partite: Match[] }[]) {
+    return gruppi.map((g) => (
+      <section key={g.chiave} className="bracket-group">
+        <h2>{g.titolo}</h2>
+        <ul className="match-list">{renderPartite(g.partite)}</ul>
+      </section>
+    ))
+  }
+
+  const matchVincenti = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'vincenti') : []
+  const matchPerdenti = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'perdenti') : []
+  const matchFinale = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'finale') : []
 
   return (
     <section className="bracket">
@@ -156,24 +192,23 @@ export function BracketScreen() {
 
       {matches.length === 0 ? (
         <p className="empty">Nessuna partita generata ancora.</p>
-      ) : (
+      ) : haTabelloneTipo ? (
         <div className="bracket-groups">
-          {gruppiDaMostrare.map((g) => (
-            <section key={g.chiave} className="bracket-group">
-              <h2>{g.titolo}</h2>
-              <ul className="match-list">
-                {g.partite.map((m: Match) => (
-                  <MatchRow
-                    key={m.id}
-                    match={m}
-                    teamNames={teamNames}
-                    onModifica={m.teamAId && m.teamBId ? apriModifica : undefined}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))}
+          <section className="bracket-section">
+            <h2 className="bracket-section-title">Tabellone vincenti</h2>
+            <div className="bracket-groups">{renderGruppi(partitePerRound(matchVincenti))}</div>
+          </section>
+          <section className="bracket-section">
+            <h2 className="bracket-section-title">Tabellone perdenti</h2>
+            <div className="bracket-groups">{renderGruppi(partitePerRound(matchPerdenti))}</div>
+          </section>
+          <section className="bracket-section">
+            <h2 className="bracket-section-title">Finale</h2>
+            <ul className="match-list">{renderPartite(matchFinale)}</ul>
+          </section>
         </div>
+      ) : (
+        <div className="bracket-groups">{renderGruppi(gruppiDaMostrare)}</div>
       )}
 
       {matchInModifica && (

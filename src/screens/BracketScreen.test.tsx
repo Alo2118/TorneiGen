@@ -101,4 +101,21 @@ describe('BracketScreen', () => {
       expect(matches.length).toBe(3)
     })
   })
+
+  it('eliminazione doppia: mostra le sezioni vincenti/perdenti/finale', async () => {
+    await db.tournaments.update('t1', { formato: 'eliminazione_doppia' })
+    await db.matches.bulkPut([
+      { id: 'wb-r1-i0', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'vincenti', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [], stato: 'programmata' },
+      { id: 'lb-r1-i0', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'perdenti', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
+      { id: 'gf', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'finale', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
+    ])
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
+        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText(/tabellone vincenti/i)).toBeInTheDocument()
+    expect(screen.getByText(/tabellone perdenti/i)).toBeInTheDocument()
+    expect(screen.getByText(/finale/i)).toBeInTheDocument()
+  })
 })
