@@ -2,8 +2,12 @@ import { creaClient, type RegistrationsClient } from './registrations-api'
 
 const DEFAULT_BASE = 'http://localhost:8787'
 
+export function getSavedApiBaseUrl(): string {
+  return localStorage.getItem('apiBaseUrl') ?? ''
+}
+
 export function getApiBaseUrl(): string {
-  const saved = localStorage.getItem('apiBaseUrl')
+  const saved = getSavedApiBaseUrl()
   if (saved) return saved
   const env = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
   return env || DEFAULT_BASE

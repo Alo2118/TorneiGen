@@ -2,13 +2,13 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Field } from '../components/Field'
 import { Button } from '../components/Button'
-import { getApiBaseUrl, getReadToken, setApiBaseUrl, setReadToken } from '../services/config'
+import { getSavedApiBaseUrl, getApiBaseUrl, getReadToken, setApiBaseUrl, setReadToken } from '../services/config'
 
 export function SettingsScreen() {
   // Il valore mostrato è solo quello salvato esplicitamente: getApiBaseUrl()
   // applica un fallback (env/default) utile al client API ma non va mostrato
   // come se fosse già stato scelto dall'utente.
-  const [apiBaseUrl, setApiBaseUrlValue] = useState(() => localStorage.getItem('apiBaseUrl') ?? '')
+  const [apiBaseUrl, setApiBaseUrlValue] = useState(() => getSavedApiBaseUrl())
   const [readToken, setReadTokenValue] = useState(() => getReadToken() ?? '')
   const [salvato, setSalvato] = useState(false)
   const placeholderUrl = getApiBaseUrl()
