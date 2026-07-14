@@ -18,7 +18,7 @@ export function HomeScreen() {
         <ul className="card-grid">
           {tornei.map((t) => (
             <li key={t.id} className="card">
-              <Link to={`/tornei/${t.id}/squadre`} className="card-link">
+              <Link to={`/tornei/${t.id}`} className="card-link">
                 <h3>{t.nome}</h3>
                 <p className="muted">{t.tipologia} · {t.formato.replace(/_/g, ' ')} · {t.data}</p>
               </Link>

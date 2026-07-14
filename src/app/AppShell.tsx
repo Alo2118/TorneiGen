@@ -6,11 +6,16 @@ import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 
 const SEZIONI = [
+  { to: '', label: 'Riepilogo', icon: '⌂' },
   { to: 'squadre', label: 'Squadre', icon: '▤' },
   { to: 'iscrizioni', label: 'Iscrizioni', icon: '✎' },
   { to: 'tabellone', label: 'Tabellone', icon: '☷' },
   { to: 'classifiche', label: 'Classifiche', icon: '≡' },
 ]
+
+function sezioneHref(tournamentId: string, to: string): string {
+  return to ? `/tornei/${tournamentId}/${to}` : `/tornei/${tournamentId}`
+}
 
 const STATO_LABEL: Record<string, string> = {
   bozza: 'Bozza',
@@ -48,7 +53,7 @@ export function AppShell() {
           <ul className="nav-links">
             {SEZIONI.map((s) => (
               <li key={s.to}>
-                <NavLink to={`/tornei/${torneo.id}/${s.to}`} className="nav-link">
+                <NavLink to={sezioneHref(torneo.id, s.to)} end={s.to === ''} className="nav-link">
                   <span className="nav-icon" aria-hidden="true">{s.icon}</span>
                   <span className="nav-label">{s.label}</span>
                 </NavLink>
@@ -96,7 +101,7 @@ export function AppShell() {
       {torneo && (
         <nav className="bottom-bar" aria-label="Navigazione">
           {SEZIONI.map((s) => (
-            <NavLink key={s.to} to={`/tornei/${torneo.id}/${s.to}`} className="bottom-bar-link">
+            <NavLink key={s.to} to={sezioneHref(torneo.id, s.to)} end={s.to === ''} className="bottom-bar-link">
               <span className="nav-icon" aria-hidden="true">{s.icon}</span>
               <span className="nav-label">{s.label}</span>
             </NavLink>
