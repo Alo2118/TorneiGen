@@ -652,3 +652,35 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   }
   .bottom-bar-link[aria-current="page"] { color: var(--sea); }
 }
+
+/* --- Toast --- */
+.toaster {
+  position: fixed;
+  bottom: calc(var(--space) * 3);
+  right: calc(var(--space) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  z-index: 40;
+  max-width: min(360px, calc(100vw - var(--space) * 4));
+}
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--sea);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 1.5) calc(var(--space) * 2);
+  color: var(--ink);
+  font-size: .875rem;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.toast-errore { border-left-color: var(--danger); }
+
+@media (max-width: 720px) {
+  .toaster {
+    bottom: calc(var(--space) * 9);
+    right: var(--space);
+    left: var(--space);
+    max-width: none;
+  }
+}
