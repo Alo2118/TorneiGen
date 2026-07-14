@@ -11,6 +11,7 @@ const FORMATI: { value: Formato; label: string }[] = [
   { value: 'girone_italiana', label: "Girone all'italiana" },
   { value: 'gironi_eliminazione', label: 'Gironi + eliminazione' },
   { value: 'eliminazione_diretta', label: 'Eliminazione diretta' },
+  { value: 'eliminazione_doppia', label: 'Eliminazione doppia' },
   { value: 'king_of_the_court', label: 'King of the court' },
 ]
 
