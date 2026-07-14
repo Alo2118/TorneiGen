@@ -23,7 +23,9 @@ Invariante che rende l'LB costruibile: dopo ogni round di consolidamento, il num
 LB uguaglia il numero di retrocessi dal round WB successivo, quindi si accoppiano 1:1 nell'innesto.
 
 Schema di retrocessione **deterministico** (il perdente del match WB va in uno slot LB predeterminato),
-non ottimizzato per evitare rivincite. Numeri non-potenza-di-2 gestiti con **bye** come nel single-elim.
+non ottimizzato per evitare rivincite. **Richiede un numero di squadre potenza di 2** (2, 4, 8, 16):
+`propagaDoppia` non gestisce i bye, quindi la generazione lancia un errore chiaro per altri conteggi
+(gestione bye non supportata in 4a — scelta implementativa che sostituisce l'idea iniziale di bye).
 
 ## 3. Nuovo formato e modello dati
 
