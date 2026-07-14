@@ -5,6 +5,7 @@ import { SetupScreen } from '../screens/SetupScreen'
 import { TeamsScreen } from '../screens/TeamsScreen'
 import { BracketScreen } from '../screens/BracketScreen'
 import { StandingsScreen } from '../screens/StandingsScreen'
+import { RegistrationsAdminScreen } from '../screens/RegistrationsAdminScreen'
 import { SettingsScreen } from '../screens/SettingsScreen'
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="tornei/:id/squadre" element={<TeamsScreen />} />
         <Route path="tornei/:id/tabellone" element={<BracketScreen />} />
         <Route path="tornei/:id/classifiche" element={<StandingsScreen />} />
+        <Route path="tornei/:id/iscrizioni" element={<RegistrationsAdminScreen />} />
         <Route path="impostazioni" element={<SettingsScreen />} />
       </Route>
     </Routes>

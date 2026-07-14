@@ -448,6 +448,41 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 }
 .standings-advanced { color: var(--win); font-weight: 600; }
 
+/* --- Iscrizioni --- */
+.registrations {
+  padding: calc(var(--space) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+.registrations-head { display: flex; flex-direction: column; gap: calc(var(--space) / 2); }
+.registrations-head h1 { margin: 0; }
+.registrations-actions { display: flex; gap: var(--space); }
+.registrations-link {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+.registrations-link-row { display: flex; align-items: center; gap: var(--space); flex-wrap: wrap; }
+.registrations-link-value {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 1.25);
+  font-size: .875rem;
+  color: var(--ink);
+}
+
 /* --- App shell --- */
 .shell { display: flex; min-height: 100%; }
 
@@ -525,6 +560,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   .setup-form { padding: calc(var(--space) * 2); }
   .teams { padding: calc(var(--space) * 2); }
   .team-form { padding: calc(var(--space) * 2); }
+  .registrations { padding: calc(var(--space) * 2); }
 
   .bottom-bar {
     display: flex;
