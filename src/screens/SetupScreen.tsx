@@ -195,7 +195,9 @@ export function SetupScreen() {
             />
 
             <Field
-              label="Cap"
+              id="cap"
+              label="Cap (tetto punteggio)"
+              hint="Facoltativo. Oltre questo punteggio basta 1 punto di scarto per chiudere il set (vale solo con «vittoria a 2 di scarto»). Lascia vuoto per nessun limite."
               type="number"
               min={1}
               value={regole.cap ?? ''}
