@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider, Toaster } from '../components/Toast'
 import { db } from '../db/database'
 import { saveTournament } from '../db/repositories'
 import { BracketScreen } from './BracketScreen'
@@ -25,7 +26,10 @@ describe('BracketScreen', () => {
   it('genera le partite del girone al click su Genera', async () => {
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /genera/i }))
@@ -37,7 +41,10 @@ describe('BracketScreen', () => {
   it('apre il controllo punteggio, salva il risultato e aggiorna la vista', async () => {
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /genera/i }))
@@ -65,7 +72,10 @@ describe('BracketScreen', () => {
   it('sposta il focus dentro il dialog all\'apertura e lo ripristina sul trigger alla chiusura', async () => {
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /genera/i }))
@@ -91,7 +101,10 @@ describe('BracketScreen', () => {
     ])
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /genera/i }))
@@ -111,7 +124,10 @@ describe('BracketScreen', () => {
     ])
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(await screen.findByText(/tabellone vincenti/i)).toBeInTheDocument()
@@ -127,7 +143,10 @@ describe('BracketScreen', () => {
     ])
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(await screen.findByText(/golden set/i)).toBeInTheDocument()
@@ -141,7 +160,10 @@ describe('BracketScreen', () => {
     ])
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     const campione = await screen.findByText(/^campione:/i)
@@ -156,7 +178,10 @@ describe('BracketScreen', () => {
     ])
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     const campione = await screen.findByText(/^campione:/i)
@@ -171,7 +196,10 @@ describe('BracketScreen', () => {
     ])
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     await screen.findByText(/golden set/i)
@@ -186,10 +214,34 @@ describe('BracketScreen', () => {
     ])
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
-        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
       </MemoryRouter>,
     )
     await screen.findByText(/golden set/i)
     expect(screen.queryByText(/^campione:/i)).not.toBeInTheDocument()
+  })
+
+  it('gironi+eliminazione: genera la fase finale dai gironi', async () => {
+    await db.tournaments.update('t1', { formato: 'gironi_eliminazione', faseFinale: 'diretta', qualificatiPerGirone: 'tutti' })
+    await db.groups.bulkPut([{ id: 'g1', tournamentId: 't1', nome: 'A', teamIds: ['A', 'B'] }])
+    await db.matches.bulkPut([
+      { id: 'gm', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 21, puntiB: 10 }], vincitoreId: 'A', stato: 'conclusa' },
+    ])
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /genera fase finale/i }))
+    await waitFor(async () => {
+      const tab = (await db.matches.where('tournamentId').equals('t1').toArray()).filter((m) => m.fase === 'tabellone')
+      expect(tab.length).toBeGreaterThan(0)
+    })
   })
 })

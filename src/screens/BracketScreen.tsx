@@ -4,6 +4,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament, teamsOf, groupsOf, matchesOf, replaceGenerated, saveTournament } from '../db/repositories'
 import { generaTorneo } from '../services/generation'
 import { salvaEProppaga } from '../services/saveResult'
+import { generaFaseFinale } from '../services/faseFinale'
+import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
 import { MatchRow } from '../components/MatchRow'
 import { ScoreControl } from '../components/ScoreControl'
@@ -18,6 +20,7 @@ function elementiFocusabili(container: HTMLElement): HTMLElement[] {
 
 export function BracketScreen() {
   const { id } = useParams()
+  const toast = useToast()
   const torneo = useLiveQuery(() => (id ? getTournament(id) : undefined), [id])
   const teams = useLiveQuery(() => teamsOf(id ?? ''), [id], [])
   const groups = useLiveQuery(() => groupsOf(id ?? ''), [id], [])
@@ -25,6 +28,7 @@ export function BracketScreen() {
 
   const [errore, setErrore] = useState<string | null>(null)
   const [generando, setGenerando] = useState(false)
+  const [generandoFinale, setGenerandoFinale] = useState(false)
   const [matchInModifica, setMatchInModifica] = useState<Match | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
@@ -114,18 +118,33 @@ export function BracketScreen() {
     }
   }
 
+  const matchGironi = matches.filter((m) => m.fase === 'girone')
+  const matchTabellone = matches.filter((m) => m.fase === 'tabellone')
+  const puoGenerareFinale =
+    torneo.formato === 'gironi_eliminazione' &&
+    matchGironi.length > 0 &&
+    matchGironi.every((m) => m.stato === 'conclusa') &&
+    matchTabellone.length === 0
+
+  async function handleGeneraFinale() {
+    if (!id) return
+    setGenerandoFinale(true)
+    try {
+      await generaFaseFinale(id)
+      toast('Fase finale generata')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Errore durante la generazione della fase finale', 'errore')
+    } finally {
+      setGenerandoFinale(false)
+    }
+  }
+
   const haGironi = groups.length > 0
-  const haTabelloneTipo = matches.some((m) => m.tabelloneTipo !== undefined)
+  const haTabellone = matchTabellone.length > 0
+  const haTabelloneTipo = matchTabellone.some((m) => m.tabelloneTipo !== undefined)
   const matchPerGirone = haGironi
-    ? groups.map((g) => ({ chiave: g.id, titolo: g.nome, partite: matches.filter((m) => m.groupId === g.id) }))
+    ? groups.map((g) => ({ chiave: g.id, titolo: g.nome, partite: matchGironi.filter((m) => m.groupId === g.id) }))
     : []
-  const round =
-    !haGironi && !haTabelloneTipo ? [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b) : []
-  const matchPerRound =
-    !haGironi && !haTabelloneTipo
-      ? round.map((r) => ({ chiave: String(r), titolo: `Turno ${r}`, partite: matches.filter((m) => m.round === r) }))
-      : []
-  const gruppiDaMostrare = haGironi ? matchPerGirone : matchPerRound
 
   function partitePerRound(elenco: Match[]) {
     const rounds = [...new Set(elenco.map((m) => m.round))].sort((a, b) => a - b)
@@ -156,10 +175,10 @@ export function BracketScreen() {
     ))
   }
 
-  const matchVincenti = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'vincenti') : []
-  const matchPerdenti = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'perdenti') : []
-  const matchFinale = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'finale') : []
-  const matchGolden = haTabelloneTipo ? matches.find((m) => m.tabelloneTipo === 'golden') : undefined
+  const matchVincenti = haTabelloneTipo ? matchTabellone.filter((m) => m.tabelloneTipo === 'vincenti') : []
+  const matchPerdenti = haTabelloneTipo ? matchTabellone.filter((m) => m.tabelloneTipo === 'perdenti') : []
+  const matchFinale = haTabelloneTipo ? matchTabellone.filter((m) => m.tabelloneTipo === 'finale') : []
+  const matchGolden = haTabelloneTipo ? matchTabellone.find((m) => m.tabelloneTipo === 'golden') : undefined
   const finale = matchFinale[0]
   const campioneId = matchGolden?.vincitoreId
     ? matchGolden.vincitoreId
@@ -175,6 +194,11 @@ export function BracketScreen() {
           <Button type="button" onClick={handleGenera} disabled={isKotc || generando || confermate.length < 2}>
             {matches.length > 0 ? 'Rigenera' : 'Genera'}
           </Button>
+          {puoGenerareFinale && (
+            <Button type="button" onClick={handleGeneraFinale} disabled={generandoFinale}>
+              Genera fase finale
+            </Button>
+          )}
         </div>
       </header>
 
@@ -199,35 +223,42 @@ export function BracketScreen() {
 
       {matches.length === 0 ? (
         <p className="empty">Nessuna partita generata ancora.</p>
-      ) : haTabelloneTipo ? (
-        <div className="bracket-groups">
-          {campioneId && (
-            <p className="bracket-champion">
-              Campione: <strong>{nomeSquadra(campioneId, teamNames)}</strong>
-            </p>
-          )}
-          <section className="bracket-section">
-            <h2 className="bracket-section-title">Tabellone vincenti</h2>
-            <div className="bracket-groups">{renderGruppi(partitePerRound(matchVincenti))}</div>
-          </section>
-          <section className="bracket-section">
-            <h2 className="bracket-section-title">Tabellone perdenti</h2>
-            <div className="bracket-groups">{renderGruppi(partitePerRound(matchPerdenti))}</div>
-          </section>
-          <section className="bracket-section">
-            <h2 className="bracket-section-title">Finale</h2>
-            <ul className="match-list">{renderPartite(matchFinale)}</ul>
-            {matchGolden && (
-              <div className="bracket-golden">
-                <h3 className="bracket-golden-title">Golden set</h3>
-                <p className="muted">Si gioca solo se il tabellone perdenti vince la finale.</p>
-                <ul className="match-list">{renderPartite([matchGolden])}</ul>
-              </div>
-            )}
-          </section>
-        </div>
       ) : (
-        <div className="bracket-groups">{renderGruppi(gruppiDaMostrare)}</div>
+        <>
+          {haGironi && <div className="bracket-groups">{renderGruppi(matchPerGirone)}</div>}
+          {haTabelloneTipo ? (
+            <div className="bracket-groups">
+              {campioneId && (
+                <p className="bracket-champion">
+                  Campione: <strong>{nomeSquadra(campioneId, teamNames)}</strong>
+                </p>
+              )}
+              <section className="bracket-section">
+                <h2 className="bracket-section-title">Tabellone vincenti</h2>
+                <div className="bracket-groups">{renderGruppi(partitePerRound(matchVincenti))}</div>
+              </section>
+              <section className="bracket-section">
+                <h2 className="bracket-section-title">Tabellone perdenti</h2>
+                <div className="bracket-groups">{renderGruppi(partitePerRound(matchPerdenti))}</div>
+              </section>
+              <section className="bracket-section">
+                <h2 className="bracket-section-title">Finale</h2>
+                <ul className="match-list">{renderPartite(matchFinale)}</ul>
+                {matchGolden && (
+                  <div className="bracket-golden">
+                    <h3 className="bracket-golden-title">Golden set</h3>
+                    <p className="muted">Si gioca solo se il tabellone perdenti vince la finale.</p>
+                    <ul className="match-list">{renderPartite([matchGolden])}</ul>
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : (
+            haTabellone && (
+              <div className="bracket-groups">{renderGruppi(partitePerRound(matchTabellone))}</div>
+            )
+          )}
+        </>
       )}
 
       {matchInModifica && (
