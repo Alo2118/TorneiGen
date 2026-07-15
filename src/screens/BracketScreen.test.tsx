@@ -177,4 +177,19 @@ describe('BracketScreen', () => {
     await screen.findByText(/golden set/i)
     expect(screen.queryByText(/^campione:/i)).not.toBeInTheDocument()
   })
+
+  it('doppia: nessun campione se i perdenti vincono la finale senza golden', async () => {
+    await db.tournaments.update('t1', { formato: 'eliminazione_doppia' })
+    await db.matches.bulkPut([
+      { id: 'gf', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'finale', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 10, puntiB: 21 }], stato: 'conclusa', vincitoreId: 'B' },
+      { id: 'golden', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'golden', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
+    ])
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
+        <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    await screen.findByText(/golden set/i)
+    expect(screen.queryByText(/^campione:/i)).not.toBeInTheDocument()
+  })
 })
