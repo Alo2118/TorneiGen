@@ -326,7 +326,7 @@ export function SetupScreen() {
                 </select>
                 {faseFinale === 'doppia' && (
                   <span className="field-hint">
-                    L'eliminazione doppia richiede un numero di qualificati per girone potenza di 2 (1, 2, 4...).
+                    L'eliminazione doppia richiede un numero totale di qualificati potenza di 2 (2, 4, 8...). Se non lo è, riduci i qualificati o usa la diretta.
                   </span>
                 )}
               </label>

@@ -96,12 +96,17 @@ export function propagaDoppia(matches: Match[], regole: RegolePunteggio): Match[
   const gf = [...byId.values()].find((m) => m.tabelloneTipo === 'finale')
   const golden = [...byId.values()].find((m) => m.tabelloneTipo === 'golden')
   if (gf && golden) {
-    golden.teamAId = null
-    golden.teamBId = null
     const oGf = matchOutcome(gf.set, regole)
     if (oGf.completa && oGf.vincitore === 'B') {
       golden.teamAId = gf.teamAId
       golden.teamBId = gf.teamBId
+    } else {
+      // golden non attivo: azzera anche l'eventuale risultato giocato
+      golden.teamAId = null
+      golden.teamBId = null
+      golden.set = []
+      golden.vincitoreId = null
+      golden.stato = 'programmata'
     }
   }
 
