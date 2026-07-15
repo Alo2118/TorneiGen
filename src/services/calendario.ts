@@ -1,6 +1,7 @@
 import { db } from '../db/database'
 import { getTournament, matchesOf } from '../db/repositories'
 import { pianifica } from '../engine/scheduler'
+import { pubblicaSeAttivo } from './pubblicazione'
 
 export async function programmaCalendario(tournamentId: string): Promise<number> {
   const torneo = await getTournament(tournamentId)
@@ -15,5 +16,6 @@ export async function programmaCalendario(tournamentId: string): Promise<number>
     durataMin: torneo.durataPartitaMin ?? 30,
   })
   await db.matches.bulkPut(pianificate)
+  void pubblicaSeAttivo(tournamentId)
   return pianificate.filter((p) => p.orario).length
 }

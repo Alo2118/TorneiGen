@@ -4,6 +4,7 @@ import { classificaGirone } from './standings'
 import { qualifiedTeams } from '../engine/groups'
 import { generateSingleElimination, resolveByes } from '../engine/bracket'
 import { generateDoubleElimination } from '../engine/doubleElimination'
+import { pubblicaSeAttivo } from './pubblicazione'
 import type { Match } from '../engine/types'
 
 const isPotenzaDi2 = (n: number): boolean => n >= 2 && (n & (n - 1)) === 0
@@ -56,5 +57,6 @@ export async function generaFaseFinale(tournamentId: string): Promise<number> {
     if (esistentiTab.length) await db.matches.bulkDelete(esistentiTab)
     await db.matches.bulkPut(tabellone)
   })
+  void pubblicaSeAttivo(tournamentId)
   return tabellone.length
 }

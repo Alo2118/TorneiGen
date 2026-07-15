@@ -1,4 +1,5 @@
 import type { Riepilogo, Iscrizione, GiocatoreIscrizione } from '../types/registrations'
+import type { PublicSnapshot } from '../types/public'
 
 export interface RegistrationsClient {
   getRiepilogo(codice: string): Promise<Riepilogo>
@@ -6,6 +7,9 @@ export interface RegistrationsClient {
   inviaIscrizione(codice: string, dati: { nomeSquadra: string; giocatori: GiocatoreIscrizione[] }): Promise<{ id: string }>
   elencaIscrizioni(codice: string): Promise<Iscrizione[]>
   eliminaIscrizione(codice: string, id: string): Promise<void>
+  pubblicaSnapshot(snap: PublicSnapshot): Promise<void>
+  getSnapshot(codice: string): Promise<PublicSnapshot>
+  rimuoviSnapshot(codice: string): Promise<void>
 }
 
 export function creaClient(config: { baseUrl: string; token?: string }): RegistrationsClient {
@@ -38,6 +42,13 @@ export function creaClient(config: { baseUrl: string; token?: string }): Registr
     },
     async eliminaIscrizione(codice, id) {
       await call('DELETE', `/api/iscrizioni/${codice}/${id}`, { auth: true })
+    },
+    async pubblicaSnapshot(snap) {
+      await call('POST', `/api/pubblico/${snap.codice}`, { body: snap, auth: true })
+    },
+    getSnapshot: (codice) => call('GET', `/api/pubblico/${codice}`) as Promise<PublicSnapshot>,
+    async rimuoviSnapshot(codice) {
+      await call('DELETE', `/api/pubblico/${codice}`, { auth: true })
     },
   }
 }

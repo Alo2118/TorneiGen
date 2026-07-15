@@ -1,6 +1,7 @@
 import type { SetScore, RegolePunteggio } from '../engine/types'
 import { db } from '../db/database'
 import { applicaRisultato, propagaTabellone, propagaDoppia } from './results'
+import { pubblicaSeAttivo } from './pubblicazione'
 
 export async function salvaEProppaga(
   tournamentId: string,
@@ -17,4 +18,5 @@ export async function salvaEProppaga(
   const doppia = matches.some((m) => m.tabelloneTipo !== undefined)
   const finali = doppia ? propagaDoppia(conRisultato, regole) : propagaTabellone(conRisultato, regole)
   await db.matches.bulkPut(finali)
+  void pubblicaSeAttivo(tournamentId)
 }
