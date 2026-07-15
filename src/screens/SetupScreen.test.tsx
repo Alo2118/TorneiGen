@@ -119,6 +119,56 @@ describe('SetupScreen', () => {
     expect(all[0].stato).toBe('iscrizioni_aperte')
   })
 
+  it('mostra e salva la sezione fase finale solo per gironi + eliminazione', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/nuovo']}>
+        <Routes>
+          <Route path="/tornei/nuovo" element={<SetupScreen />} />
+          <Route path="/tornei/:id/squadre" element={<div>squadre</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByLabelText(/^fase finale$/i)).not.toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText(/^nome$/i), 'Coppa Inverno')
+    await userEvent.type(screen.getAllByLabelText(/^data$/i)[0], '2026-12-01')
+    await userEvent.selectOptions(screen.getByLabelText(/^formato$/i), 'gironi_eliminazione')
+
+    expect(screen.getByLabelText(/^fase finale$/i)).toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText(/^fase finale$/i), 'doppia')
+    expect(screen.getByText(/potenza di 2/i)).toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText(/qualificati per girone/i), '2')
+
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+    expect(await screen.findByText('squadre')).toBeInTheDocument()
+
+    const all = await listTournaments()
+    expect(all[0].faseFinale).toBe('doppia')
+    expect(all[0].qualificatiPerGirone).toBe(2)
+  })
+
+  it('usa i default fase finale "diretta" e qualificati "tutti" quando non modificati', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/nuovo']}>
+        <Routes>
+          <Route path="/tornei/nuovo" element={<SetupScreen />} />
+          <Route path="/tornei/:id/squadre" element={<div>squadre</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.type(screen.getByLabelText(/^nome$/i), 'Coppa Primavera')
+    await userEvent.type(screen.getAllByLabelText(/^data$/i)[0], '2026-03-01')
+    await userEvent.selectOptions(screen.getByLabelText(/^formato$/i), 'gironi_eliminazione')
+
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+    expect(await screen.findByText('squadre')).toBeInTheDocument()
+
+    const all = await listTournaments()
+    expect(all[0].faseFinale).toBe('diretta')
+    expect(all[0].qualificatiPerGirone).toBe('tutti')
+  })
+
   it('reindirizza alla home se il torneo da modificare non esiste', async () => {
     render(
       <MemoryRouter initialEntries={['/tornei/does-not-exist/setup']}>

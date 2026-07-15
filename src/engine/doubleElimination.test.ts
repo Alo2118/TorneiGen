@@ -2,19 +2,20 @@ import { describe, it, expect } from 'vitest'
 import { generateDoubleElimination } from './doubleElimination'
 
 describe('generateDoubleElimination', () => {
-  it('4 squadre: WB 3 match, LB 2 match, 1 finale', () => {
+  it('4 squadre: WB 3 match, LB 2 match, 1 finale, 1 golden (totale 7)', () => {
     const b = generateDoubleElimination(['A', 'B', 'C', 'D'])
     expect(b.filter((m) => m.tabelloneTipo === 'vincenti')).toHaveLength(3)
     expect(b.filter((m) => m.tabelloneTipo === 'perdenti')).toHaveLength(2)
     expect(b.filter((m) => m.tabelloneTipo === 'finale')).toHaveLength(1)
+    expect(b).toHaveLength(7)
   })
 
-  it('8 squadre: WB 7, LB 6, finale 1 (totale 14 = 2N-2)', () => {
+  it('8 squadre: WB 7, LB 6, finale 1, golden 1 (totale 15)', () => {
     const b = generateDoubleElimination(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'])
     expect(b.filter((m) => m.tabelloneTipo === 'vincenti')).toHaveLength(7)
     expect(b.filter((m) => m.tabelloneTipo === 'perdenti')).toHaveLength(6)
     expect(b.filter((m) => m.tabelloneTipo === 'finale')).toHaveLength(1)
-    expect(b).toHaveLength(14)
+    expect(b).toHaveLength(15)
   })
 
   it('il perdente del WB round 1 finisce in uno slot LB', () => {
@@ -41,5 +42,12 @@ describe('generateDoubleElimination', () => {
     const wbMatch = b.find((m) => m.tabelloneTipo === 'vincenti')!
     expect(wbMatch.winnerFeeds).toEqual({ matchId: 'gf', slot: 'A' })
     expect(wbMatch.loserFeeds).toEqual({ matchId: 'gf', slot: 'B' })
+  })
+
+  it('genera anche la partita golden', () => {
+    const b = generateDoubleElimination(['A', 'B', 'C', 'D'])
+    const golden = b.filter((m) => m.tabelloneTipo === 'golden')
+    expect(golden).toHaveLength(1)
+    expect(golden[0].id).toBe('golden')
   })
 })

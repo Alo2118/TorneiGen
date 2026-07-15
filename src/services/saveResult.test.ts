@@ -32,4 +32,13 @@ describe('salvaEProppaga', () => {
     expect((await db.matches.get('lb-r1-i0'))?.teamAId).toBe('B')
     expect((await db.matches.get('wb-r2-i0'))?.teamAId).toBe('A')
   })
+
+  it('il golden set è deciso da un solo set anche se il torneo è al meglio di 3', async () => {
+    const bo3 = { setAlMeglioDi: 3 as const, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true }
+    await db.matches.put({ id: 'golden', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'golden', round: 1, posizioneTabellone: 0, teamAId: 'W', teamBId: 'L', set: [], stato: 'programmata' })
+    await salvaEProppaga('t1', 'golden', [{ puntiA: 21, puntiB: 15 }], bo3)
+    const g = await db.matches.get('golden')
+    expect(g?.stato).toBe('conclusa')
+    expect(g?.vincitoreId).toBe('W')
+  })
 })

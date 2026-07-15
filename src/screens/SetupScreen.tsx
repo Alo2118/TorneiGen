@@ -7,6 +7,8 @@ import { getTournament, saveTournament } from '../db/repositories'
 import { newId } from '../engine/id'
 import type { Formato, RegolePunteggio, Tipologia, Tournament } from '../engine/types'
 
+const QUALIFICATI_OPZIONI = [1, 2, 3, 4]
+
 const FORMATI: { value: Formato; label: string }[] = [
   { value: 'girone_italiana', label: "Girone all'italiana" },
   { value: 'gironi_eliminazione', label: 'Gironi + eliminazione' },
@@ -40,6 +42,8 @@ export function SetupScreen() {
   const [giornate, setGiornate] = useState<GiornataForm[]>([giornataDefault('')])
   const [numeroCampi, setNumeroCampi] = useState(1)
   const [durataPartitaMin, setDurataPartitaMin] = useState(30)
+  const [faseFinale, setFaseFinale] = useState<'diretta' | 'doppia'>('diretta')
+  const [qualificatiPerGirone, setQualificatiPerGirone] = useState<number | 'tutti'>('tutti')
   const [pronto, setPronto] = useState(!id)
 
   useEffect(() => {
@@ -62,6 +66,8 @@ export function SetupScreen() {
       setGiornate(t.giornate && t.giornate.length > 0 ? t.giornate : [giornataDefault(t.data)])
       setNumeroCampi(t.numeroCampi ?? 1)
       setDurataPartitaMin(t.durataPartitaMin ?? 30)
+      setFaseFinale(t.faseFinale ?? 'diretta')
+      setQualificatiPerGirone(t.qualificatiPerGirone ?? 'tutti')
       setPronto(true)
     })
     return () => {
@@ -102,6 +108,8 @@ export function SetupScreen() {
       giornate: giornateFinali,
       numeroCampi,
       durataPartitaMin,
+      faseFinale,
+      qualificatiPerGirone,
     }
     await saveTournament(torneo)
     navigate(`/tornei/${tournamentId}/squadre`)
@@ -279,6 +287,52 @@ export function SetupScreen() {
             />
           </div>
         </fieldset>
+
+        {formato === 'gironi_eliminazione' && (
+          <fieldset className="setup-rules">
+            <legend>Fase finale</legend>
+            <div className="rules-grid">
+              <label className="field" htmlFor="fase-finale">
+                <span className="field-label">Fase finale</span>
+                <select
+                  id="fase-finale"
+                  className="field-input"
+                  value={faseFinale}
+                  onChange={(e) => setFaseFinale(e.target.value as 'diretta' | 'doppia')}
+                >
+                  <option value="diretta">Eliminazione diretta</option>
+                  <option value="doppia">Eliminazione doppia</option>
+                </select>
+              </label>
+
+              <label className="field" htmlFor="qualificati-per-girone">
+                <span className="field-label">Qualificati per girone</span>
+                <select
+                  id="qualificati-per-girone"
+                  className="field-input"
+                  value={qualificatiPerGirone}
+                  onChange={(e) =>
+                    setQualificatiPerGirone(
+                      e.target.value === 'tutti' ? 'tutti' : Number(e.target.value),
+                    )
+                  }
+                >
+                  <option value="tutti">Tutti</option>
+                  {QUALIFICATI_OPZIONI.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                {faseFinale === 'doppia' && (
+                  <span className="field-hint">
+                    L'eliminazione doppia richiede un numero totale di qualificati potenza di 2 (2, 4, 8...). Se non lo è, riduci i qualificati o usa la diretta.
+                  </span>
+                )}
+              </label>
+            </div>
+          </fieldset>
+        )}
 
         <div className="setup-actions">
           <Button type="submit">Salva</Button>

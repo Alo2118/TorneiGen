@@ -60,7 +60,7 @@ export interface Match {
   stato: 'programmata' | 'in_corso' | 'conclusa'
   campo?: string
   orario?: string
-  tabelloneTipo?: 'vincenti' | 'perdenti' | 'finale'
+  tabelloneTipo?: 'vincenti' | 'perdenti' | 'finale' | 'golden'
   vincitoreVerso?: { matchId: string; slot: 'A' | 'B' } | null
   perdenteVerso?: { matchId: string; slot: 'A' | 'B' } | null
 }
@@ -77,6 +77,8 @@ export interface Tournament {
   giornate?: { data: string; inizio: string; fine: string }[]
   numeroCampi?: number
   durataPartitaMin?: number
+  faseFinale?: 'diretta' | 'doppia'
+  qualificatiPerGirone?: number | 'tutti'
 }
 
 // --- Tipi risultato del motore (indipendenti dalla persistenza) ---
@@ -99,7 +101,7 @@ export interface BracketMatch {
 
 export interface DoubleBracketMatch {
   id: string
-  tabelloneTipo: 'vincenti' | 'perdenti' | 'finale'
+  tabelloneTipo: 'vincenti' | 'perdenti' | 'finale' | 'golden'
   round: number
   index: number
   teamAId: string | null

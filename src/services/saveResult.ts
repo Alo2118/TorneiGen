@@ -11,7 +11,8 @@ export async function salvaEProppaga(
   const matches = await db.matches.where('tournamentId').equals(tournamentId).toArray()
   const target = matches.find((m) => m.id === matchId)
   if (!target) throw new Error(`Partita ${matchId} non trovata`)
-  const aggiornato = applicaRisultato(target, set, regole)
+  const regoleMatch = target.tabelloneTipo === 'golden' ? { ...regole, setAlMeglioDi: 1 as const } : regole
+  const aggiornato = applicaRisultato(target, set, regoleMatch)
   const conRisultato = matches.map((m) => (m.id === matchId ? aggiornato : m))
   const doppia = matches.some((m) => m.tabelloneTipo !== undefined)
   const finali = doppia ? propagaDoppia(conRisultato, regole) : propagaTabellone(conRisultato, regole)

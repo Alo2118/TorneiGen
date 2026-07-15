@@ -78,5 +78,10 @@ export function generateDoubleElimination(teamIds: string[]): DoubleBracketMatch
     wbFinal.loserFeeds = { matchId: 'gf', slot: 'B' }
   }
 
-  return [...wb, ...lb, gf]
+  const golden: DoubleBracketMatch = {
+    id: 'golden', tabelloneTipo: 'golden', round: 1, index: 0,
+    teamAId: null, teamBId: null, winnerFeeds: null, loserFeeds: null,
+  }
+
+  return [...wb, ...lb, gf, golden]
 }

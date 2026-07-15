@@ -112,7 +112,7 @@ describe('propagaTabellone integrazione con generaTorneo (bye reale)', () => {
   })
 })
 
-function doppia(id: string, tipo: 'vincenti' | 'perdenti' | 'finale', round: number, index: number, a: string | null, b: string | null, vinc?: { matchId: string; slot: 'A' | 'B' } | null, perd?: { matchId: string; slot: 'A' | 'B' } | null): Match {
+function doppia(id: string, tipo: 'vincenti' | 'perdenti' | 'finale' | 'golden', round: number, index: number, a: string | null, b: string | null, vinc?: { matchId: string; slot: 'A' | 'B' } | null, perd?: { matchId: string; slot: 'A' | 'B' } | null): Match {
   return { id, tournamentId: 't1', fase: 'tabellone', tabelloneTipo: tipo, round, posizioneTabellone: index, teamAId: a, teamBId: b, set: [], stato: 'programmata', vincitoreVerso: vinc ?? null, perdenteVerso: perd ?? null }
 }
 
@@ -133,5 +133,41 @@ describe('propagaDoppia', () => {
     const out = propagaDoppia([wb, lb, wbf], r)
     expect(out.find((m) => m.id === 'lb-r1-i0')!.teamAId).toBe('A') // ora A ha perso
     expect(out.find((m) => m.id === 'wb-r2-i0')!.teamAId).toBe('B') // ora B ha vinto
+  })
+})
+
+describe('propagaDoppia golden', () => {
+  it('se il perdenti (slot B) vince la finale, si attiva il golden coi due finalisti', () => {
+    const gf = { ...doppia('gf', 'finale', 1, 0, 'W', 'L'), set: [{ puntiA: 10, puntiB: 21 }] } // vince B (L, dal perdenti)
+    const golden = doppia('golden', 'golden', 1, 0, null, null)
+    const out = propagaDoppia([gf, golden], r)
+    const g = out.find((m) => m.id === 'golden')!
+    expect(g.teamAId).toBe('W')
+    expect(g.teamBId).toBe('L')
+  })
+  it('se il vincenti (slot A) vince la finale, il golden resta vuoto', () => {
+    const gf = { ...doppia('gf', 'finale', 1, 0, 'W', 'L'), set: [{ puntiA: 21, puntiB: 10 }] } // vince A (W)
+    const golden = { ...doppia('golden', 'golden', 1, 0, 'X', 'Y') } // stato precedente sporco
+    const out = propagaDoppia([gf, golden], r)
+    const g = out.find((m) => m.id === 'golden')!
+    expect(g.teamAId).toBeNull()
+    expect(g.teamBId).toBeNull()
+  })
+  it('se la finale passa da slot B a slot A, il golden già giocato viene azzerato', () => {
+    // finale ora vinta dal vincenti (slot A): il golden, prima giocato, deve tornare pulito
+    const gf = { ...doppia('gf', 'finale', 1, 0, 'W', 'L'), set: [{ puntiA: 21, puntiB: 10 }] }
+    const golden = {
+      ...doppia('golden', 'golden', 1, 0, 'W', 'L'),
+      set: [{ puntiA: 21, puntiB: 15 }],
+      vincitoreId: 'W',
+      stato: 'conclusa' as const,
+    }
+    const out = propagaDoppia([gf, golden], r)
+    const g = out.find((m) => m.id === 'golden')!
+    expect(g.teamAId).toBeNull()
+    expect(g.teamBId).toBeNull()
+    expect(g.set).toEqual([])
+    expect(g.vincitoreId).toBeNull()
+    expect(g.stato).toBe('programmata')
   })
 })
