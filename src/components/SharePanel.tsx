@@ -36,6 +36,8 @@ export function SharePanel({ tournament }: Props) {
     try {
       await interrompiPubblicazione(tournament.id)
       toast('Pubblicazione interrotta')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Impossibile interrompere la pubblicazione', 'errore')
     } finally {
       setInCorso(false)
     }

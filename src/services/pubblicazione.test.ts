@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '../db/database'
-import { saveTournament } from '../db/repositories'
-import { buildSnapshot, pubblicaSeAttivo } from './pubblicazione'
+import { saveTournament, getTournament } from '../db/repositories'
+import { buildSnapshot, pubblicaSeAttivo, interrompiPubblicazione } from './pubblicazione'
 import type { Tournament, Team, Group, Match } from '../engine/types'
 
 const torneo: Tournament = {
@@ -60,5 +60,19 @@ describe('pubblicaSeAttivo (guardie)', () => {
   })
   it('non lancia se il torneo non esiste', async () => {
     await expect(pubblicaSeAttivo('inesistente')).resolves.toBeUndefined()
+  })
+})
+
+describe('interrompiPubblicazione', () => {
+  beforeEach(async () => {
+    await Promise.all([db.tournaments.clear(), db.teams.clear(), db.groups.clear(), db.matches.clear()])
+  })
+  // se la rimozione remota fallisce (rete non raggiungibile nei test), l'errore si propaga
+  // e il flag `pubblicato` NON viene azzerato: niente falso "interrotta" con snapshot orfano.
+  it('NON azzera il flag se la rimozione remota fallisce', async () => {
+    await saveTournament({ ...torneo, pubblicato: true })
+    await expect(interrompiPubblicazione('t1')).rejects.toBeTruthy()
+    const t = await getTournament('t1')
+    expect(t?.pubblicato).toBe(true)
   })
 })

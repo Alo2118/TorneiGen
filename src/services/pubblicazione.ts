@@ -38,20 +38,19 @@ export async function pubblica(tournamentId: string): Promise<void> {
 export async function interrompiPubblicazione(tournamentId: string): Promise<void> {
   const t = await getTournament(tournamentId)
   if (!t) return
-  try {
-    await getClient().rimuoviSnapshot(t.codiceIscrizione)
-  } catch {
-    // best-effort: rimuoviamo comunque il flag locale
-  }
+  // se la rimozione remota fallisce l'errore si propaga: NON azzeriamo il flag,
+  // così non riportiamo "interrotta" lasciando uno snapshot pubblico orfano.
+  await getClient().rimuoviSnapshot(t.codiceIscrizione)
   await saveTournament({ ...t, pubblicato: false })
 }
 
 export async function pubblicaSeAttivo(tournamentId: string): Promise<void> {
-  const t = await getTournament(tournamentId)
-  if (!t?.pubblicato) return
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
-  if (!getReadToken()) return
+  // interamente best-effort: nessun errore (nemmeno una lettura Dexie) deve propagarsi
   try {
+    const t = await getTournament(tournamentId)
+    if (!t?.pubblicato) return
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+    if (!getReadToken()) return
     const snap = await buildSnapshot(tournamentId)
     await getClient().pubblicaSnapshot(snap)
   } catch {
