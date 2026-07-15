@@ -36,14 +36,16 @@ export async function generaFaseFinale(tournamentId: string): Promise<number> {
     }
     const bracket = generateDoubleElimination(ids)
     tabellone = bracket.map((bm) => ({
-      id: bm.id, tournamentId, fase: 'tabellone', tabelloneTipo: bm.tabelloneTipo,
+      id: `${tournamentId}:${bm.id}`, tournamentId, fase: 'tabellone', tabelloneTipo: bm.tabelloneTipo,
       round: bm.round, posizioneTabellone: bm.index, teamAId: bm.teamAId, teamBId: bm.teamBId,
-      set: [], stato: 'programmata', vincitoreVerso: bm.winnerFeeds, perdenteVerso: bm.loserFeeds,
+      set: [], stato: 'programmata',
+      vincitoreVerso: bm.winnerFeeds ? { matchId: `${tournamentId}:${bm.winnerFeeds.matchId}`, slot: bm.winnerFeeds.slot } : null,
+      perdenteVerso: bm.loserFeeds ? { matchId: `${tournamentId}:${bm.loserFeeds.matchId}`, slot: bm.loserFeeds.slot } : null,
     }))
   } else {
     const bracket = resolveByes(generateSingleElimination(ids))
     tabellone = bracket.map((bm) => ({
-      id: bm.id, tournamentId, fase: 'tabellone', round: bm.round,
+      id: `${tournamentId}:${bm.id}`, tournamentId, fase: 'tabellone', round: bm.round,
       posizioneTabellone: bm.index, teamAId: bm.teamAId, teamBId: bm.teamBId, set: [], stato: 'programmata',
     }))
   }

@@ -93,8 +93,8 @@ export function propagaDoppia(matches: Match[], regole: RegolePunteggio): Match[
   }
 
   // golden set: si gioca solo se la finale la vince il campione perdenti (slot B)
-  const gf = byId.get('gf')
-  const golden = byId.get('golden')
+  const gf = [...byId.values()].find((m) => m.tabelloneTipo === 'finale')
+  const golden = [...byId.values()].find((m) => m.tabelloneTipo === 'golden')
   if (gf && golden) {
     golden.teamAId = null
     golden.teamBId = null

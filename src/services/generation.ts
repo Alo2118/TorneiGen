@@ -39,7 +39,7 @@ function eliminazioneDiretta(t: Tournament, teams: Team[]): EsitoGenerazione {
   const ids = [...teams].sort((a, b) => (a.testaDiSerie ?? 999) - (b.testaDiSerie ?? 999)).map((x) => x.id)
   const bracket = resolveByes(generateSingleElimination(ids))
   const matches: Match[] = bracket.map((bm) => ({
-    id: bm.id, tournamentId: t.id, fase: 'tabellone', round: bm.round,
+    id: `${t.id}:${bm.id}`, tournamentId: t.id, fase: 'tabellone', round: bm.round,
     posizioneTabellone: bm.index, teamAId: bm.teamAId, teamBId: bm.teamBId,
     set: [], stato: 'programmata',
   }))
@@ -57,10 +57,11 @@ function eliminazioneDoppia(t: Tournament, teams: Team[]): EsitoGenerazione {
   const ids = [...teams].sort((a, b) => (a.testaDiSerie ?? 999) - (b.testaDiSerie ?? 999)).map((x) => x.id)
   const bracket = generateDoubleElimination(ids)
   const matches: Match[] = bracket.map((bm) => ({
-    id: bm.id, tournamentId: t.id, fase: 'tabellone', tabelloneTipo: bm.tabelloneTipo,
+    id: `${t.id}:${bm.id}`, tournamentId: t.id, fase: 'tabellone', tabelloneTipo: bm.tabelloneTipo,
     round: bm.round, posizioneTabellone: bm.index, teamAId: bm.teamAId, teamBId: bm.teamBId,
     set: [], stato: 'programmata',
-    vincitoreVerso: bm.winnerFeeds, perdenteVerso: bm.loserFeeds,
+    vincitoreVerso: bm.winnerFeeds ? { matchId: `${t.id}:${bm.winnerFeeds.matchId}`, slot: bm.winnerFeeds.slot } : null,
+    perdenteVerso: bm.loserFeeds ? { matchId: `${t.id}:${bm.loserFeeds.matchId}`, slot: bm.loserFeeds.slot } : null,
   }))
   return { groups: [], matches }
 }

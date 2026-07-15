@@ -49,6 +49,46 @@ describe('generaFaseFinale', () => {
     await expect(generaFaseFinale('t1')).rejects.toThrow(/concludi|gironi/i)
   })
 
+  it('isolamento tra tornei: due tornei con tabellone non collidono nella tabella matches condivisa', async () => {
+    // t1
+    await saveTournament(torneo({ id: 't1', faseFinale: 'diretta' }))
+    await db.teams.bulkPut(['A', 'B', 'C', 'D'].map((id) => ({ id, tournamentId: 't1', nome: id, players: [], stato: 'confermata' as const, origine: 'manuale' as const })))
+    await db.groups.bulkPut([girone('g1', ['A', 'B']), girone('g2', ['C', 'D'])])
+    await db.matches.bulkPut([
+      { id: 't1-m1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 21, puntiB: 10 }], vincitoreId: 'A', stato: 'conclusa' },
+      { id: 't1-m2', tournamentId: 't1', fase: 'girone', groupId: 'g2', round: 1, teamAId: 'C', teamBId: 'D', set: [{ puntiA: 21, puntiB: 12 }], vincitoreId: 'C', stato: 'conclusa' },
+    ])
+    await generaFaseFinale('t1')
+    const tabT1Prima = (await db.matches.where('tournamentId').equals('t1').toArray()).filter((m) => m.fase === 'tabellone')
+    expect(tabT1Prima.length).toBeGreaterThan(0)
+
+    // t2 (torneo diverso, stesso formato) - deve generare un proprio tabellone senza toccare quello di t1
+    await saveTournament(torneo({ id: 't2', faseFinale: 'diretta' }))
+    await db.teams.bulkPut(['E', 'F', 'G', 'H'].map((id) => ({ id, tournamentId: 't2', nome: id, players: [], stato: 'confermata' as const, origine: 'manuale' as const })))
+    await db.groups.bulkPut([
+      { id: 'g1t2', tournamentId: 't2', nome: 'g1t2', teamIds: ['E', 'F'] },
+      { id: 'g2t2', tournamentId: 't2', nome: 'g2t2', teamIds: ['G', 'H'] },
+    ])
+    await db.matches.bulkPut([
+      { id: 't2-m1', tournamentId: 't2', fase: 'girone', groupId: 'g1t2', round: 1, teamAId: 'E', teamBId: 'F', set: [{ puntiA: 21, puntiB: 10 }], vincitoreId: 'E', stato: 'conclusa' },
+      { id: 't2-m2', tournamentId: 't2', fase: 'girone', groupId: 'g2t2', round: 1, teamAId: 'G', teamBId: 'H', set: [{ puntiA: 21, puntiB: 12 }], vincitoreId: 'G', stato: 'conclusa' },
+    ])
+    await generaFaseFinale('t2')
+
+    const tabT1Dopo = (await db.matches.where('tournamentId').equals('t1').toArray()).filter((m) => m.fase === 'tabellone')
+    const tabT2 = (await db.matches.where('tournamentId').equals('t2').toArray()).filter((m) => m.fase === 'tabellone')
+
+    // t1 non e' stato toccato dalla generazione di t2
+    expect(tabT1Dopo.length).toBe(tabT1Prima.length)
+    expect(new Set(tabT1Dopo.map((m) => m.id))).toEqual(new Set(tabT1Prima.map((m) => m.id)))
+    expect(tabT2.length).toBeGreaterThan(0)
+
+    // nessuna sovrapposizione di id tra i due tabelloni
+    const idsT1 = new Set(tabT1Dopo.map((m) => m.id))
+    const idsT2 = new Set(tabT2.map((m) => m.id))
+    expect([...idsT1].some((id) => idsT2.has(id))).toBe(false)
+  })
+
   it('doppia con qualificati non potenza di 2 → errore', async () => {
     // 3 gironi con 1 qualificato ciascuno = 3 (non potenza di 2). Qui: 1 qualificato per girone su 2 gironi = 2 (pow2), quindi forziamo 1 girone con dispari.
     await saveTournament(torneo({ faseFinale: 'doppia', qualificatiPerGirone: 1 }))
