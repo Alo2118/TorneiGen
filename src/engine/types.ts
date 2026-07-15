@@ -77,6 +77,8 @@ export interface Tournament {
   giornate?: { data: string; inizio: string; fine: string }[]
   numeroCampi?: number
   durataPartitaMin?: number
+  faseFinale?: 'diretta' | 'doppia'
+  qualificatiPerGirone?: number | 'tutti'
 }
 
 // --- Tipi risultato del motore (indipendenti dalla persistenza) ---
