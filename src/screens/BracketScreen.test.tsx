@@ -115,14 +115,14 @@ describe('BracketScreen', () => {
     })
   })
 
-  it('eliminazione doppia: mostra le sezioni vincenti/perdenti/finale', async () => {
+  it('eliminazione doppia: mostra tutti i match del tabellone (vincenti/perdenti/finale) nell\'albero', async () => {
     await db.tournaments.update('t1', { formato: 'eliminazione_doppia' })
     await db.matches.bulkPut([
       { id: 'wb-r1-i0', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'vincenti', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [], stato: 'programmata' },
       { id: 'lb-r1-i0', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'perdenti', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
       { id: 'gf', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'finale', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
     ])
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
         <ToastProvider>
           <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
@@ -130,18 +130,18 @@ describe('BracketScreen', () => {
         </ToastProvider>
       </MemoryRouter>,
     )
-    expect(await screen.findByText(/tabellone vincenti/i)).toBeInTheDocument()
-    expect(screen.getByText(/tabellone perdenti/i)).toBeInTheDocument()
-    expect(screen.getByText(/finale/i)).toBeInTheDocument()
+    expect(await screen.findByText('Tabellone')).toBeInTheDocument()
+    // wb + lb + finale = 3 riquadri partita nell'albero
+    expect(container.querySelectorAll('.match-box').length).toBe(3)
   })
 
-  it('doppia: mostra la sezione Golden set', async () => {
+  it('doppia: il golden set fa parte dell\'albero del tabellone', async () => {
     await db.tournaments.update('t1', { formato: 'eliminazione_doppia' })
     await db.matches.bulkPut([
       { id: 'gf', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'finale', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [], stato: 'programmata' },
       { id: 'golden', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'golden', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
     ])
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
         <ToastProvider>
           <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
@@ -149,16 +149,18 @@ describe('BracketScreen', () => {
         </ToastProvider>
       </MemoryRouter>,
     )
-    expect(await screen.findByText(/golden set/i)).toBeInTheDocument()
+    await screen.findByText('Tabellone')
+    // finale + golden = 2 riquadri partita
+    expect(container.querySelectorAll('.match-box').length).toBe(2)
   })
 
-  it('doppia: il campione è il vincitore del golden quando giocato', async () => {
+  it('doppia: il campione è il vincitore del golden quando giocato (corona sul riquadro giusto)', async () => {
     await db.tournaments.update('t1', { formato: 'eliminazione_doppia' })
     await db.matches.bulkPut([
       { id: 'gf', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'finale', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 15, puntiB: 21 }], stato: 'conclusa', vincitoreId: 'B' },
       { id: 'golden', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'golden', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 21, puntiB: 18 }], stato: 'conclusa', vincitoreId: 'A' },
     ])
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
         <ToastProvider>
           <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
@@ -166,8 +168,14 @@ describe('BracketScreen', () => {
         </ToastProvider>
       </MemoryRouter>,
     )
-    const campione = await screen.findByText(/^campione:/i)
-    expect(campione).toHaveTextContent('A')
+    await screen.findByText('Tabellone')
+    const righeVincenti = Array.from(container.querySelectorAll('.match-box-row-vince'))
+    const rigaA = righeVincenti.find((el) => el.textContent?.includes('A'))
+    const rigaB = righeVincenti.find((el) => el.textContent?.includes('B'))
+    // il golden set è stato giocato e vinto da A: la corona va sul suo riquadro,
+    // non su quello di B (che ha comunque vinto la finale)
+    expect(rigaA?.textContent).toContain('🏆')
+    expect(rigaB?.textContent).not.toContain('🏆')
   })
 
   it('doppia: il campione è lo slot vincenti se vince la finale (golden non giocato)', async () => {
@@ -176,7 +184,7 @@ describe('BracketScreen', () => {
       { id: 'gf', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'finale', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 21, puntiB: 15 }], stato: 'conclusa', vincitoreId: 'A' },
       { id: 'golden', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'golden', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
     ])
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
         <ToastProvider>
           <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
@@ -184,8 +192,11 @@ describe('BracketScreen', () => {
         </ToastProvider>
       </MemoryRouter>,
     )
-    const campione = await screen.findByText(/^campione:/i)
-    expect(campione).toHaveTextContent('A')
+    await screen.findByText('Tabellone')
+    const rigaA = Array.from(container.querySelectorAll('.match-box-row-vince')).find((el) =>
+      el.textContent?.includes('A'),
+    )
+    expect(rigaA?.textContent).toContain('🏆')
   })
 
   it('doppia: nessun campione se la finale non è ancora conclusa', async () => {
@@ -194,7 +205,7 @@ describe('BracketScreen', () => {
       { id: 'gf', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'finale', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [], stato: 'programmata' },
       { id: 'golden', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'golden', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
     ])
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
         <ToastProvider>
           <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
@@ -202,8 +213,8 @@ describe('BracketScreen', () => {
         </ToastProvider>
       </MemoryRouter>,
     )
-    await screen.findByText(/golden set/i)
-    expect(screen.queryByText(/^campione:/i)).not.toBeInTheDocument()
+    await screen.findByText('Tabellone')
+    expect(container.textContent).not.toContain('🏆')
   })
 
   it('doppia: nessun campione se i perdenti vincono la finale senza golden', async () => {
@@ -212,7 +223,7 @@ describe('BracketScreen', () => {
       { id: 'gf', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'finale', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 10, puntiB: 21 }], stato: 'conclusa', vincitoreId: 'B' },
       { id: 'golden', tournamentId: 't1', fase: 'tabellone', tabelloneTipo: 'golden', round: 1, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
     ])
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
         <ToastProvider>
           <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
@@ -220,8 +231,12 @@ describe('BracketScreen', () => {
         </ToastProvider>
       </MemoryRouter>,
     )
-    await screen.findByText(/golden set/i)
-    expect(screen.queryByText(/^campione:/i)).not.toBeInTheDocument()
+    await screen.findByText('Tabellone')
+    // B ha vinto la finale (riga evidenziata) ma senza corona: serve il golden per essere campione
+    const rigaVincente = container.querySelector('.match-box-row-vince')
+    expect(rigaVincente).toBeTruthy()
+    expect(rigaVincente?.textContent).not.toContain('🏆')
+    expect(container.textContent).not.toContain('🏆')
   })
 
   it('gironi+eliminazione: genera la fase finale dai gironi', async () => {
