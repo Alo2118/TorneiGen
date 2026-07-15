@@ -159,6 +159,13 @@ export function BracketScreen() {
   const matchVincenti = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'vincenti') : []
   const matchPerdenti = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'perdenti') : []
   const matchFinale = haTabelloneTipo ? matches.filter((m) => m.tabelloneTipo === 'finale') : []
+  const matchGolden = haTabelloneTipo ? matches.find((m) => m.tabelloneTipo === 'golden') : undefined
+  const finale = matchFinale[0]
+  const campioneId = matchGolden?.vincitoreId
+    ? matchGolden.vincitoreId
+    : finale && finale.stato === 'conclusa' && finale.vincitoreId && finale.vincitoreId === finale.teamAId
+      ? finale.vincitoreId
+      : undefined
 
   return (
     <section className="bracket">
@@ -194,6 +201,11 @@ export function BracketScreen() {
         <p className="empty">Nessuna partita generata ancora.</p>
       ) : haTabelloneTipo ? (
         <div className="bracket-groups">
+          {campioneId && (
+            <p className="bracket-champion">
+              Campione: <strong>{nomeSquadra(campioneId, teamNames)}</strong>
+            </p>
+          )}
           <section className="bracket-section">
             <h2 className="bracket-section-title">Tabellone vincenti</h2>
             <div className="bracket-groups">{renderGruppi(partitePerRound(matchVincenti))}</div>
@@ -205,6 +217,13 @@ export function BracketScreen() {
           <section className="bracket-section">
             <h2 className="bracket-section-title">Finale</h2>
             <ul className="match-list">{renderPartite(matchFinale)}</ul>
+            {matchGolden && (
+              <div className="bracket-golden">
+                <h3 className="bracket-golden-title">Golden set</h3>
+                <p className="muted">Si gioca solo se il tabellone perdenti vince la finale.</p>
+                <ul className="match-list">{renderPartite([matchGolden])}</ul>
+              </div>
+            )}
           </section>
         </div>
       ) : (
