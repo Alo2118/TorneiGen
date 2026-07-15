@@ -2,8 +2,8 @@ import type { Match } from './types'
 
 export type TabelloneTipo = NonNullable<Match['tabelloneTipo']>
 
-export const BOX_W = 180
-export const BOX_H = 56
+export const BOX_W = 200
+export const BOX_H = 66
 export const COL_GAP = 48
 export const ROW_GAP = 16
 export const BAND_GAP = 48

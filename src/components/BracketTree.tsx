@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Match } from '../engine/types'
 import { layoutBracket, BOX_W, BOX_H } from '../engine/bracketLayout'
 import type { BracketNode, BracketSegment } from '../engine/bracketLayout'
@@ -38,6 +38,11 @@ export function BracketTree({ matches, teamNames, variant, onMatchClick }: Props
     const w = wrapRef.current?.clientWidth ?? vbW
     setT({ scale: Math.min(1, w / vbW), x: 0, y: 0 })
   }
+  // adatta di default alla larghezza al mount e quando l'albero cambia dimensione
+  useEffect(() => {
+    const w = wrapRef.current?.clientWidth ?? 0
+    if (w > 0 && vbW > 0) setT({ scale: Math.min(1, w / vbW), x: 0, y: 0 })
+  }, [vbW])
   function zoom(fattore: number) {
     setT((s) => ({ ...s, scale: Math.max(0.3, Math.min(2.5, s.scale * fattore)) }))
   }
@@ -74,7 +79,7 @@ export function BracketTree({ matches, teamNames, variant, onMatchClick }: Props
         onPointerLeave={onPointerUp}
         onWheel={onWheel}
       >
-        <svg width={vbW} height={vbH} viewBox={`0 0 ${vbW} ${vbH}`} style={{ transform: `translate(${t.x}px, ${t.y}px) scale(${t.scale})`, transformOrigin: '0 0' }}>
+        <svg width={vbW * t.scale} height={vbH * t.scale} viewBox={`0 0 ${vbW} ${vbH}`} style={{ display: 'block', transform: `translate(${t.x}px, ${t.y}px)`, transformOrigin: '0 0' }}>
           <g transform={`translate(${PAD}, ${PAD})`}>
             {layout.segmenti.map((s: BracketSegment, i) => {
               const from = nodeById.get(s.from)
