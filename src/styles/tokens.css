@@ -344,10 +344,6 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .bracket-group h2 { margin: 0; font-size: 1rem; }
 .bracket-section { display: flex; flex-direction: column; gap: calc(var(--space) * 2); }
 .bracket-section-title { margin: 0; font-size: 1.25rem; }
-.bracket-champion { margin: 0; color: var(--ink); }
-.bracket-champion strong { color: var(--win); }
-.bracket-golden { display: flex; flex-direction: column; gap: var(--space); margin-top: calc(var(--space) * 1.5); }
-.bracket-golden-title { margin: 0; font-size: 1rem; color: var(--muted); }
 .match-list {
   list-style: none;
   margin: 0;
@@ -548,33 +544,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .standings-table th.tnum,
 .standings-table td.tnum { text-align: right; }
 .standings-table tbody tr:last-child td { border-bottom: none; }
-.standings-row-lead td:first-child { color: var(--win); font-weight: 600; }
 
 .standings-bracket { display: flex; flex-direction: column; gap: calc(var(--space) * 1.5); }
 .standings-bracket h2 { margin: 0; font-size: 1rem; }
-.standings-champion { margin: 0; color: var(--ink); }
-.standings-champion strong { color: var(--win); }
-.standings-rounds { display: flex; flex-direction: column; gap: calc(var(--space) * 2); }
-.standings-round { display: flex; flex-direction: column; gap: var(--space); }
-.standings-round h3 { margin: 0; font-size: .85rem; color: var(--muted); font-weight: 600; }
-.standings-round-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space) / 2);
-}
-.standings-bracket-match {
-  display: flex;
-  align-items: center;
-  gap: var(--space);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: calc(var(--space) * 1.25) calc(var(--space) * 1.5);
-}
-.standings-advanced { color: var(--win); font-weight: 600; }
 
 /* --- Iscrizioni --- */
 .registrations {
@@ -802,3 +774,69 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
     max-width: none;
   }
 }
+
+/* --- Fase 7a: box-partita --- */
+.match-box {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+}
+button.match-box { cursor: pointer; }
+button.match-box:hover { border-color: var(--sea); }
+.match-box-campione { border-color: var(--sand); }
+.match-box-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space);
+  padding: calc(var(--space) * 0.5) var(--space);
+  color: var(--muted);
+  min-height: 0;
+}
+.match-box-row:first-child { border-bottom: 1px solid var(--line); }
+.match-box-row-vince { color: var(--ink); font-weight: 600; }
+.match-box-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.match-box-score { flex-shrink: 0; white-space: nowrap; color: var(--ink); letter-spacing: 0.02em; }
+
+/* --- Fase 7a: albero tabellone --- */
+.bracket-tree { position: relative; }
+.bracket-tree-controls {
+  display: flex;
+  gap: var(--space);
+  margin-bottom: var(--space);
+}
+.bracket-tree-controls button {
+  min-width: 36px;
+  padding: calc(var(--space) * 0.5) var(--space);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  cursor: pointer;
+}
+.bracket-tree-viewport {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  touch-action: none;
+  cursor: grab;
+}
+.bracket-tree-viewport:active { cursor: grabbing; }
+.bracket-segment { stroke: var(--line); stroke-width: 2; }
+.bracket-segment-avanza { stroke: var(--sea); }
+.bracket-segment-discesa { stroke: var(--muted); stroke-dasharray: 4 4; stroke-width: 1.5; }
+
+/* --- Fase 7a: classifica girone con zona qualificazione --- */
+.standings-row-qualificata td { background: color-mix(in srgb, var(--sea) 8%, transparent); }
+.standings-row-qualificata td:first-child { box-shadow: inset 3px 0 0 var(--sea); }
+.standings-row-taglio td { border-bottom: 2px solid var(--sea); }

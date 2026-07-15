@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
 import { MatchRow } from '../components/MatchRow'
 import { ScoreControl } from '../components/ScoreControl'
+import { BracketTree } from '../components/BracketTree'
 import type { Match, SetScore } from '../engine/types'
 
 const FOCUSABLE_SELECTOR =
@@ -141,19 +142,9 @@ export function BracketScreen() {
 
   const haGironi = groups.length > 0
   const haTabellone = matchTabellone.length > 0
-  const haTabelloneTipo = matchTabellone.some((m) => m.tabelloneTipo !== undefined)
   const matchPerGirone = haGironi
     ? groups.map((g) => ({ chiave: g.id, titolo: g.nome, partite: matchGironi.filter((m) => m.groupId === g.id) }))
     : []
-
-  function partitePerRound(elenco: Match[]) {
-    const rounds = [...new Set(elenco.map((m) => m.round))].sort((a, b) => a - b)
-    return rounds.map((r) => ({
-      chiave: String(r),
-      titolo: `Turno ${r}`,
-      partite: elenco.filter((m) => m.round === r),
-    }))
-  }
 
   function renderPartite(partite: Match[]) {
     return partite.map((m) => (
@@ -174,17 +165,6 @@ export function BracketScreen() {
       </section>
     ))
   }
-
-  const matchVincenti = haTabelloneTipo ? matchTabellone.filter((m) => m.tabelloneTipo === 'vincenti') : []
-  const matchPerdenti = haTabelloneTipo ? matchTabellone.filter((m) => m.tabelloneTipo === 'perdenti') : []
-  const matchFinale = haTabelloneTipo ? matchTabellone.filter((m) => m.tabelloneTipo === 'finale') : []
-  const matchGolden = haTabelloneTipo ? matchTabellone.find((m) => m.tabelloneTipo === 'golden') : undefined
-  const finale = matchFinale[0]
-  const campioneId = matchGolden?.vincitoreId
-    ? matchGolden.vincitoreId
-    : finale && finale.stato === 'conclusa' && finale.vincitoreId && finale.vincitoreId === finale.teamAId
-      ? finale.vincitoreId
-      : undefined
 
   return (
     <section className="bracket">
@@ -226,37 +206,16 @@ export function BracketScreen() {
       ) : (
         <>
           {haGironi && <div className="bracket-groups">{renderGruppi(matchPerGirone)}</div>}
-          {haTabelloneTipo ? (
-            <div className="bracket-groups">
-              {campioneId && (
-                <p className="bracket-champion">
-                  Campione: <strong>{nomeSquadra(campioneId, teamNames)}</strong>
-                </p>
-              )}
-              <section className="bracket-section">
-                <h2 className="bracket-section-title">Tabellone vincenti</h2>
-                <div className="bracket-groups">{renderGruppi(partitePerRound(matchVincenti))}</div>
-              </section>
-              <section className="bracket-section">
-                <h2 className="bracket-section-title">Tabellone perdenti</h2>
-                <div className="bracket-groups">{renderGruppi(partitePerRound(matchPerdenti))}</div>
-              </section>
-              <section className="bracket-section">
-                <h2 className="bracket-section-title">Finale</h2>
-                <ul className="match-list">{renderPartite(matchFinale)}</ul>
-                {matchGolden && (
-                  <div className="bracket-golden">
-                    <h3 className="bracket-golden-title">Golden set</h3>
-                    <p className="muted">Si gioca solo se il tabellone perdenti vince la finale.</p>
-                    <ul className="match-list">{renderPartite([matchGolden])}</ul>
-                  </div>
-                )}
-              </section>
-            </div>
-          ) : (
-            haTabellone && (
-              <div className="bracket-groups">{renderGruppi(partitePerRound(matchTabellone))}</div>
-            )
+          {haTabellone && (
+            <section className="bracket-section">
+              <h2 className="bracket-section-title">Tabellone</h2>
+              <BracketTree
+                matches={matchTabellone}
+                teamNames={teamNames}
+                variant="interattivo"
+                onMatchClick={apriModifica}
+              />
+            </section>
           )}
         </>
       )}
