@@ -840,3 +840,14 @@ button.match-box:hover { border-color: var(--sea); }
 .standings-row-qualificata td { background: color-mix(in srgb, var(--sea) 8%, transparent); }
 .standings-row-qualificata td:first-child { box-shadow: inset 3px 0 0 var(--sea); }
 .standings-row-taglio td { border-bottom: 2px solid var(--sea); }
+
+/* --- Fase 7b: vista pubblica --- */
+.public-view { display: flex; flex-direction: column; gap: calc(var(--space) * 3); padding: calc(var(--space) * 2); max-width: 960px; margin: 0 auto; }
+.public-view-head { display: flex; flex-direction: column; gap: var(--space); }
+.public-view-meta { display: flex; align-items: center; gap: var(--space); }
+.public-calendar { display: flex; flex-direction: column; gap: var(--space); }
+.public-calendar-day { display: flex; flex-direction: column; gap: calc(var(--space) / 2); }
+.public-calendar-day h3 { margin: 0; font-size: .85rem; color: var(--muted); }
+.public-calendar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: calc(var(--space) / 2); }
+.public-calendar-row { display: flex; align-items: center; gap: var(--space); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space); }
+.public-calendar-court { color: var(--muted); font-size: .85rem; }
