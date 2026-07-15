@@ -9,6 +9,7 @@ import { nuoveIscrizioni, iscrizioneATeam } from '../services/import'
 import { useToast } from '../components/Toast'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
+import { SharePanel } from '../components/SharePanel'
 
 const STATO_LABEL: Record<string, string> = {
   bozza: 'Bozza',
@@ -122,6 +123,8 @@ export function RiepilogoScreen() {
           <Button>{AZIONE_LABEL[passo.azione] ?? 'Vai'}</Button>
         </Link>
       </div>
+
+      <SharePanel tournament={torneo} />
 
       <div className="registrations-actions">
         <Button
