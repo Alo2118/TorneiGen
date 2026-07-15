@@ -832,3 +832,32 @@ button.match-box:hover { border-color: var(--sea); }
 .match-box-row-vince { color: var(--ink); font-weight: 600; }
 .match-box-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .match-box-score { color: var(--ink); }
+
+/* --- Fase 7a: albero tabellone --- */
+.bracket-tree { position: relative; }
+.bracket-tree-controls {
+  display: flex;
+  gap: var(--space);
+  margin-bottom: var(--space);
+}
+.bracket-tree-controls button {
+  min-width: 36px;
+  padding: calc(var(--space) * 0.5) var(--space);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  cursor: pointer;
+}
+.bracket-tree-viewport {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  touch-action: none;
+  cursor: grab;
+}
+.bracket-tree-viewport:active { cursor: grabbing; }
+.bracket-segment { stroke: var(--line); stroke-width: 2; }
+.bracket-segment-avanza { stroke: var(--sea); }
+.bracket-segment-discesa { stroke: var(--muted); stroke-dasharray: 4 4; stroke-width: 1.5; }
