@@ -861,3 +861,8 @@ button.match-box:hover { border-color: var(--sea); }
 .bracket-segment { stroke: var(--line); stroke-width: 2; }
 .bracket-segment-avanza { stroke: var(--sea); }
 .bracket-segment-discesa { stroke: var(--muted); stroke-dasharray: 4 4; stroke-width: 1.5; }
+
+/* --- Fase 7a: classifica girone con zona qualificazione --- */
+.standings-row-qualificata td { background: color-mix(in srgb, var(--sea) 8%, transparent); }
+.standings-row-qualificata td:first-child { box-shadow: inset 3px 0 0 var(--sea); }
+.standings-row-taglio td { border-bottom: 2px solid var(--sea); }
