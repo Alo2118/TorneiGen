@@ -802,3 +802,33 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
     max-width: none;
   }
 }
+
+/* --- Fase 7a: box-partita --- */
+.match-box {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+}
+button.match-box { cursor: pointer; }
+button.match-box:hover { border-color: var(--sea); }
+.match-box-campione { border-color: var(--sand); }
+.match-box-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space);
+  padding: calc(var(--space) * 0.75) var(--space);
+  color: var(--muted);
+}
+.match-box-row:first-child { border-bottom: 1px solid var(--line); }
+.match-box-row-vince { color: var(--ink); font-weight: 600; }
+.match-box-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.match-box-score { color: var(--ink); }
