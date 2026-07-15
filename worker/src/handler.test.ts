@@ -112,4 +112,47 @@ describe('handle', () => {
     expect(r.status).toBe(401)
     expect((await r.json()).error).toBe('non autorizzato')
   })
+
+  const snapshot = (over = {}) =>
+    JSON.stringify({ codice: 'ABC', nome: 'Coppa', tipologia: '2x2', formato: 'gironi_eliminazione', regolePunteggio: {}, updatedAt: '', teams: [], groups: [], matches: [], ...over })
+
+  it('POST /api/pubblico/:codice senza token -> 401', async () => {
+    const r = await handle(req('POST', '/api/pubblico/ABC', { body: { codice: 'ABC', nome: 'C', tipologia: '2x2' } }), env())
+    expect(r.status).toBe(401)
+  })
+
+  it('POST /api/pubblico/:codice con token salva lo snapshot in KV', async () => {
+    const e = env()
+    const r = await handle(req('POST', '/api/pubblico/ABC', { headers: auth, body: { codice: 'ABC', nome: 'Coppa', tipologia: '2x2', regolePunteggio: {}, teams: [], groups: [], matches: [] } }), e)
+    expect(r.status).toBe(200)
+    expect(await e.KV.get('pubblico:ABC')).toContain('Coppa')
+  })
+
+  it('POST /api/pubblico/:codice con dati incompleti -> 400', async () => {
+    const r = await handle(req('POST', '/api/pubblico/ABC', { headers: auth, body: { codice: 'ABC' } }), env())
+    expect(r.status).toBe(400)
+  })
+
+  it('GET /api/pubblico/:codice pubblico ritorna lo snapshot', async () => {
+    const r = await handle(req('GET', '/api/pubblico/ABC'), env({ 'pubblico:ABC': snapshot() }))
+    expect(r.status).toBe(200)
+    expect((await r.json()).nome).toBe('Coppa')
+  })
+
+  it('GET /api/pubblico/:codice inesistente -> 404', async () => {
+    const r = await handle(req('GET', '/api/pubblico/NOPE'), env())
+    expect(r.status).toBe(404)
+  })
+
+  it('DELETE /api/pubblico/:codice con token rimuove lo snapshot', async () => {
+    const e = env({ 'pubblico:ABC': snapshot() })
+    const r = await handle(req('DELETE', '/api/pubblico/ABC', { headers: auth }), e)
+    expect(r.status).toBe(200)
+    expect(await e.KV.get('pubblico:ABC')).toBeNull()
+  })
+
+  it('DELETE /api/pubblico/:codice senza token -> 401', async () => {
+    const r = await handle(req('DELETE', '/api/pubblico/ABC'), env({ 'pubblico:ABC': snapshot() }))
+    expect(r.status).toBe(401)
+  })
 })

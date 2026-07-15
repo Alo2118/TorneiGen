@@ -1,4 +1,5 @@
 import type { Riepilogo, Iscrizione } from '../../src/types/registrations'
+import type { PublicSnapshot } from '../../src/types/public'
 
 export interface KV {
   get(key: string): Promise<string | null>
@@ -97,6 +98,35 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   if (req.method === 'DELETE' && p1 === 'iscrizioni' && p2 && p3) {
     if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
     await env.KV.delete(`iscr:${p2}:${p3}`)
+    return json({ ok: true })
+  }
+
+  // POST /api/pubblico/:codice  (organizzatore)
+  if (req.method === 'POST' && p1 === 'pubblico' && p2 && !p3) {
+    if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
+    let b: Partial<PublicSnapshot>
+    try {
+      b = (await req.json()) as Partial<PublicSnapshot>
+    } catch {
+      return json({ error: 'JSON non valido' }, 400)
+    }
+    if (!b.codice || !b.nome || !b.tipologia) return json({ error: 'dati incompleti' }, 400)
+    const snap = { ...b, updatedAt: b.updatedAt || new Date().toISOString() }
+    await env.KV.put(`pubblico:${p2}`, JSON.stringify(snap))
+    return json({ ok: true })
+  }
+
+  // GET /api/pubblico/:codice  (pubblico)
+  if (req.method === 'GET' && p1 === 'pubblico' && p2) {
+    const raw = await env.KV.get(`pubblico:${p2}`)
+    if (!raw) return json({ error: 'torneo non trovato' }, 404)
+    return json(JSON.parse(raw))
+  }
+
+  // DELETE /api/pubblico/:codice  (organizzatore)
+  if (req.method === 'DELETE' && p1 === 'pubblico' && p2 && !p3) {
+    if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
+    await env.KV.delete(`pubblico:${p2}`)
     return json({ ok: true })
   }
 
