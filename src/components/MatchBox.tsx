@@ -44,7 +44,7 @@ export function MatchBox({ match, teamNames, campione, onClick }: Props) {
     )
   }
   return (
-    <div className={`match-box${campione ? ' match-box-campione' : ''}`} aria-label={label}>
+    <div className={`match-box${campione ? ' match-box-campione' : ''}`} role="group" aria-label={label}>
       {contenuto}
     </div>
   )
