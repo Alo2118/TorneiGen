@@ -90,7 +90,7 @@ export function RegistrationsAdminScreen() {
     try {
       const tutte = await getClient().elencaIscrizioni(torneo.codiceIscrizione)
       const esistenti = await teamsOf(id)
-      const nuove = nuoveIscrizioni(tutte, esistenti)
+      const nuove = nuoveIscrizioni(tutte, esistenti, torneo.tipologia)
       setDaImportare(nuove)
       setSelezionate(new Set(nuove.map((i) => i.id)))
     } catch (err) {

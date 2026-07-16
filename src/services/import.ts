@@ -1,6 +1,7 @@
 import type { Iscrizione } from '../types/registrations'
-import type { Team } from '../engine/types'
+import type { Team, Tipologia } from '../engine/types'
 import { newId } from '../engine/id'
+import { etichettaSquadra, etichettaIscrizione } from './teams'
 
 export function iscrizioneATeam(iscr: Iscrizione, tournamentId: string): Team {
   return {
@@ -13,7 +14,11 @@ export function iscrizioneATeam(iscr: Iscrizione, tournamentId: string): Team {
   }
 }
 
-export function nuoveIscrizioni(iscrizioni: Iscrizione[], teamsEsistenti: Team[]): Iscrizione[] {
-  const nomi = new Set(teamsEsistenti.map((t) => t.nome.trim().toLowerCase()))
-  return iscrizioni.filter((i) => !nomi.has(i.nomeSquadra.trim().toLowerCase()))
+export function nuoveIscrizioni(
+  iscrizioni: Iscrizione[],
+  teamsEsistenti: Team[],
+  tipologia: Tipologia,
+): Iscrizione[] {
+  const chiavi = new Set(teamsEsistenti.map((t) => etichettaSquadra(t, tipologia).trim().toLowerCase()))
+  return iscrizioni.filter((i) => !chiavi.has(etichettaIscrizione(i, tipologia).trim().toLowerCase()))
 }
