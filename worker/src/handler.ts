@@ -1,5 +1,6 @@
 import type { Riepilogo, Iscrizione } from '../../src/types/registrations'
 import type { PublicSnapshot } from '../../src/types/public'
+import type { OrgRecord } from '../../src/types/org'
 
 export interface KV {
   get(key: string): Promise<string | null>
@@ -8,14 +9,22 @@ export interface KV {
   list(opts: { prefix: string }): Promise<{ keys: { name: string }[] }>
 }
 
+export interface OrgStore {
+  get(codice: string): Promise<OrgRecord | null>
+  put(row: OrgRecord): Promise<void>
+  delete(codice: string): Promise<void>
+}
+
 export interface Env {
   KV: KV
   READ_TOKEN: string
+  WRITE_TOKEN: string
+  ORG: OrgStore
 }
 
 const CORS = {
   'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
+  'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
   'access-control-allow-headers': 'authorization,content-type',
 }
 
@@ -26,6 +35,11 @@ function json(data: unknown, status = 200): Response {
 function autorizzato(req: Request, env: Env): boolean {
   const m = (req.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i)
   return !!m && m[1] === env.READ_TOKEN
+}
+
+function autorizzatoScrittura(req: Request, env: Env): boolean {
+  const m = (req.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i)
+  return !!m && m[1] === env.WRITE_TOKEN
 }
 
 export async function handle(req: Request, env: Env): Promise<Response> {
@@ -130,6 +144,39 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   if (req.method === 'DELETE' && p1 === 'pubblico' && p2 && !p3) {
     if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
     await env.KV.delete(`pubblico:${p2}`)
+    return json({ ok: true })
+  }
+
+  // GET /api/org/:codice  (organizzatore, privato)
+  if (req.method === 'GET' && p1 === 'org' && p2) {
+    if (!autorizzatoScrittura(req, env)) return json({ error: 'non autorizzato' }, 401)
+    const row = await env.ORG.get(p2)
+    if (!row) return json({ error: 'non trovato' }, 404)
+    return json(row)
+  }
+
+  // PUT /api/org/:codice  (organizzatore, concorrenza ottimistica)
+  if (req.method === 'PUT' && p1 === 'org' && p2 && !p3) {
+    if (!autorizzatoScrittura(req, env)) return json({ error: 'non autorizzato' }, 401)
+    let b: { doc?: unknown; version?: unknown }
+    try {
+      b = (await req.json()) as { doc?: unknown; version?: unknown }
+    } catch {
+      return json({ error: 'JSON non valido' }, 400)
+    }
+    if (typeof b.doc !== 'string' || typeof b.version !== 'number') return json({ error: 'dati incompleti' }, 400)
+    const esistente = await env.ORG.get(p2)
+    const corrente = esistente?.version ?? 0
+    if (b.version !== corrente) return json({ error: 'conflitto', version: corrente }, 409)
+    const nuovaVersione = corrente + 1
+    await env.ORG.put({ codice: p2, doc: b.doc, version: nuovaVersione, updatedAt: new Date().toISOString() })
+    return json({ version: nuovaVersione })
+  }
+
+  // DELETE /api/org/:codice  (organizzatore)
+  if (req.method === 'DELETE' && p1 === 'org' && p2 && !p3) {
+    if (!autorizzatoScrittura(req, env)) return json({ error: 'non autorizzato' }, 401)
+    await env.ORG.delete(p2)
     return json({ ok: true })
   }
 
