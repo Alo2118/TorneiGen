@@ -11,7 +11,7 @@ const torneo: Tournament = {
 }
 function team(id: string): Team {
   return { id, tournamentId: 't1', nome: `Team ${id}`, stato: 'confermata', origine: 'manuale',
-    players: [{ nome: 'Mario', cognome: 'Rossi', email: 'mario@x.it', telefono: '3330000000' }] }
+    players: [{ nome: 'Mario', cognome: `Cognome${id}`, email: 'mario@x.it', telefono: '3330000000' }] }
 }
 const group: Group = { id: 'g1', tournamentId: 't1', nome: 'Girone A', teamIds: ['a', 'b'] }
 const match: Match = { id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b', set: [{ puntiA: 21, puntiB: 15 }], stato: 'conclusa', vincitoreId: 'a' }
@@ -33,8 +33,8 @@ describe('buildSnapshot', () => {
   it('riduce le squadre a id+nome SENZA dati personali', async () => {
     const s = await buildSnapshot('t1')
     expect(s.teams).toEqual([
-      { id: 'a', nome: 'Team a' },
-      { id: 'b', nome: 'Team b' },
+      { id: 'a', nome: 'Cognomea' },
+      { id: 'b', nome: 'Cognomeb' },
     ])
     // nessun campo players/email/telefono nello snapshot serializzato
     expect(JSON.stringify(s)).not.toContain('mario@x.it')

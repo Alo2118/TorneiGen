@@ -25,7 +25,7 @@ describe('TeamsScreen', () => {
         <Routes><Route path="/tornei/:id/squadre" element={<TeamsScreen />} /></Routes>
       </MemoryRouter>,
     )
-    expect(await screen.findByText('Squali')).toBeInTheDocument()
+    expect(await screen.findByText('Bo / Ci')).toBeInTheDocument()
   })
 
   it('conferma una squadra in attesa', async () => {
@@ -38,5 +38,27 @@ describe('TeamsScreen', () => {
     await userEvent.click(await screen.findByRole('button', { name: /conferma/i }))
     const t = await db.teams.get('w')
     expect(t?.stato).toBe('confermata')
+  })
+
+  it('2x2: salva una coppia senza nome squadra e la mostra coi cognomi', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/squadre']}>
+        <Routes><Route path="/tornei/:id/squadre" element={<TeamsScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    // compila i 2 giocatori (nome/cognome/email/telefono) lasciando vuoto "Nome squadra (facoltativo)"
+    const cognomi = await screen.findAllByLabelText('Cognome')
+    await userEvent.type(cognomi[0], 'Rossi')
+    await userEvent.type(cognomi[1], 'Bianchi')
+    const nomi = screen.getAllByLabelText('Nome')
+    const email = screen.getAllByLabelText('Email')
+    const tel = screen.getAllByLabelText('Telefono')
+    for (let i = 0; i < 2; i++) {
+      await userEvent.type(nomi[i], `G${i}`)
+      await userEvent.type(email[i], `g${i}@x.it`)
+      await userEvent.type(tel[i], '3330000000')
+    }
+    await userEvent.click(screen.getByRole('button', { name: /aggiungi squadra/i }))
+    expect(await screen.findByText('Rossi / Bianchi')).toBeTruthy()
   })
 })
