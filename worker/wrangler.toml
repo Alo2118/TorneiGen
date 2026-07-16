@@ -8,3 +8,12 @@ compatibility_date = "2026-01-01"
 [[kv_namespaces]]
 binding = "KV"
 id = "b829e5cefba14ce4bc75776f4fc30847"
+
+# D1 per lo store dell'organizzazione (multi-organizzatore).
+# Crea il DB una volta: `wrangler d1 create torneigen-org` e incolla il database_id qui sotto.
+# Applica lo schema: `wrangler d1 execute torneigen-org --file=schema.sql --remote`
+# Imposta il token di scrittura: `wrangler secret put WRITE_TOKEN`
+[[d1_databases]]
+binding = "DB"
+database_name = "torneigen-org"
+database_id = "DA_INCOLLARE_DOPO_wrangler_d1_create"
