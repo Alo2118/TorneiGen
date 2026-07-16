@@ -25,6 +25,14 @@ export function setReadToken(v: string): void {
   localStorage.setItem('readToken', v.trim())
 }
 
+export function getWriteToken(): string | undefined {
+  return localStorage.getItem('writeToken') ?? undefined
+}
+
+export function setWriteToken(v: string): void {
+  localStorage.setItem('writeToken', v.trim())
+}
+
 export function getClient(): RegistrationsClient {
-  return creaClient({ baseUrl: getApiBaseUrl(), token: getReadToken() })
+  return creaClient({ baseUrl: getApiBaseUrl(), token: getReadToken(), writeToken: getWriteToken() })
 }
