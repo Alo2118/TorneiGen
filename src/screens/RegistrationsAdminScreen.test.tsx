@@ -31,10 +31,10 @@ describe('RegistrationsAdminScreen', () => {
     expect(call).toBeTruthy()
   })
 
-  it('scarica le iscrizioni e importa le squadre selezionate', async () => {
+  it('scarica le iscrizioni (2x2, nome squadra vuoto) e mostra i cognomi, poi importa le squadre selezionate', async () => {
     const risposte = [
-      // prima chiamata: elencaIscrizioni
-      { status: 200, body: { iscrizioni: [{ id: '1', codice: 'ABC123', nomeSquadra: 'Squali', createdAt: '', giocatori: [{ nome: 'A', cognome: 'B', email: 'a@x.it', telefono: '1' }, { nome: 'C', cognome: 'D', email: 'c@x.it', telefono: '2' }] }] } },
+      // prima chiamata: elencaIscrizioni — nomeSquadra vuoto (facoltativo nel 2x2), etichetta coi cognomi
+      { status: 200, body: { iscrizioni: [{ id: '1', codice: 'ABC123', nomeSquadra: '', createdAt: '', giocatori: [{ nome: 'Anna', cognome: 'Rossi', email: 'a@x.it', telefono: '1' }, { nome: 'Bruno', cognome: 'Bianchi', email: 'c@x.it', telefono: '2' }] }] } },
     ]
     let i = 0
     vi.stubGlobal('fetch', vi.fn(async () => {
@@ -47,9 +47,9 @@ describe('RegistrationsAdminScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /scarica iscrizioni/i }))
-    expect(await screen.findByText('Squali')).toBeInTheDocument()
+    expect(await screen.findByText('Rossi / Bianchi')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /importa/i }))
     const teams = await db.teams.where('tournamentId').equals('t1').toArray()
-    expect(teams.some((t) => t.nome === 'Squali' && t.origine === 'online' && t.stato === 'in_attesa')).toBe(true)
+    expect(teams.some((t) => t.players.some((p) => p.cognome === 'Rossi') && t.players.some((p) => p.cognome === 'Bianchi') && t.origine === 'online' && t.stato === 'in_attesa')).toBe(true)
   })
 })

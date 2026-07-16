@@ -147,7 +147,13 @@ export function RegistrationScreen() {
       </header>
 
       <form className="registration-form" onSubmit={handleSubmit}>
-        <Field label="Nome squadra" id="nome-squadra" value={nome} onChange={(e) => setNome(e.target.value)} required />
+        <Field
+          label={riepilogo.tipologia === '2x2' ? 'Nome squadra (facoltativo)' : 'Nome squadra'}
+          id="nome-squadra"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          required={riepilogo.tipologia !== '2x2'}
+        />
 
         <div className="player-rows">
           {players.map((p, i) => (

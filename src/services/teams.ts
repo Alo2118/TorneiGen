@@ -1,15 +1,24 @@
 import type { Team, Tipologia } from '../engine/types'
+import type { Iscrizione } from '../types/registrations'
 
 export function numeroGiocatori(tipologia: Tipologia): { min: number; max: number } {
   return tipologia === '2x2' ? { min: 2, max: 2 } : { min: 4, max: 8 }
 }
 
-export function etichettaSquadra(team: Team, tipologia: Tipologia): string {
+function etichettaCore(cognomi: string[], nome: string, id: string, tipologia: Tipologia): string {
   if (tipologia === '2x2') {
-    const cognomi = team.players.map((p) => p.cognome.trim()).filter(Boolean)
-    if (cognomi.length > 0) return cognomi.join(' / ')
+    const c = cognomi.map((x) => x.trim()).filter(Boolean)
+    if (c.length > 0) return c.join(' / ')
   }
-  return team.nome.trim() || team.id
+  return nome.trim() || id
+}
+
+export function etichettaSquadra(team: Team, tipologia: Tipologia): string {
+  return etichettaCore(team.players.map((p) => p.cognome), team.nome, team.id, tipologia)
+}
+
+export function etichettaIscrizione(iscr: Iscrizione, tipologia: Tipologia): string {
+  return etichettaCore(iscr.giocatori.map((g) => g.cognome), iscr.nomeSquadra, iscr.id, tipologia)
 }
 
 export function mappaEtichette(teams: Team[], tipologia: Tipologia): Record<string, string> {

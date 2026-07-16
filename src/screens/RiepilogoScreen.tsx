@@ -10,6 +10,7 @@ import { useToast } from '../components/Toast'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { SharePanel } from '../components/SharePanel'
+import type { Tipologia } from '../engine/types'
 
 const STATO_LABEL: Record<string, string> = {
   bozza: 'Bozza',
@@ -36,13 +37,18 @@ export function RiepilogoScreen() {
   const [sincronizzando, setSincronizzando] = useState(false)
   const primoSync = useRef<string | null>(null)
 
-  async function sincronizzaIscrizioni(codice: string, tournamentId: string, annullato: () => boolean) {
+  async function sincronizzaIscrizioni(
+    codice: string,
+    tournamentId: string,
+    tipologia: Tipologia,
+    annullato: () => boolean,
+  ) {
     if (!getReadToken()) return
     setSincronizzando(true)
     try {
       const tutte = await getClient().elencaIscrizioni(codice)
       const esistenti = await teamsOf(tournamentId)
-      const nuove = nuoveIscrizioni(tutte, esistenti)
+      const nuove = nuoveIscrizioni(tutte, esistenti, tipologia)
       if (nuove.length > 0) {
         await db.teams.bulkPut(nuove.map((i) => iscrizioneATeam(i, tournamentId)))
       }
@@ -67,7 +73,7 @@ export function RiepilogoScreen() {
     if (primoSync.current === id) return
     primoSync.current = id
     let annullato = false
-    void sincronizzaIscrizioni(torneo.codiceIscrizione, id, () => annullato)
+    void sincronizzaIscrizioni(torneo.codiceIscrizione, id, torneo.tipologia, () => annullato)
     return () => {
       annullato = true
     }

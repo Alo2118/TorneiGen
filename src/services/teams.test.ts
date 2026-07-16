@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { numeroGiocatori, validaSquadra, etichettaSquadra, mappaEtichette } from './teams'
+import { numeroGiocatori, validaSquadra, etichettaSquadra, mappaEtichette, etichettaIscrizione } from './teams'
 import type { Team } from '../engine/types'
+import type { Iscrizione } from '../types/registrations'
 
 function squadra(n: number): Team {
   return {
@@ -62,5 +63,21 @@ describe('validaSquadra: nome opzionale nel 2x2', () => {
   })
   it('4x4 senza nome NON è valida', () => {
     expect(validaSquadra(sq('a', '', ['Rossi', 'Bianchi', 'Verdi', 'Neri']), '4x4')).toBe('Il nome squadra è obbligatorio')
+  })
+})
+
+function iscr(id: string, nomeSquadra: string, cognomi: string[]): Iscrizione {
+  return { id, codice: 'ABC', nomeSquadra, createdAt: '',
+    giocatori: cognomi.map((c) => ({ nome: 'X', cognome: c, email: 'x@x.it', telefono: '1' })) }
+}
+describe('etichettaIscrizione', () => {
+  it('2x2: unisce i cognomi', () => {
+    expect(etichettaIscrizione(iscr('a', 'Squali', ['Rossi', 'Bianchi']), '2x2')).toBe('Rossi / Bianchi')
+  })
+  it('2x2: senza cognomi ripiega sul nome squadra', () => {
+    expect(etichettaIscrizione(iscr('a', 'Squali', ['', '']), '2x2')).toBe('Squali')
+  })
+  it('4x4: usa il nome squadra', () => {
+    expect(etichettaIscrizione(iscr('a', 'Squali', ['Rossi', 'Bianchi', 'Verdi', 'Neri']), '4x4')).toBe('Squali')
   })
 })

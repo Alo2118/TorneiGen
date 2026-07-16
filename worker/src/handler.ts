@@ -65,19 +65,22 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   if (req.method === 'POST' && p1 === 'iscrizioni' && p2) {
     const raw = await env.KV.get(`torneo:${p2}`)
     if (!raw) return json({ error: 'torneo non trovato' }, 404)
-    if ((JSON.parse(raw) as Riepilogo).chiuso) return json({ error: 'iscrizioni chiuse' }, 403)
+    const rip = JSON.parse(raw) as Riepilogo
+    if (rip.chiuso) return json({ error: 'iscrizioni chiuse' }, 403)
     let b: Partial<Iscrizione>
     try {
       b = (await req.json()) as Partial<Iscrizione>
     } catch {
       return json({ error: 'JSON non valido' }, 400)
     }
-    if (!b.nomeSquadra?.trim() || !Array.isArray(b.giocatori) || b.giocatori.length === 0) return json({ error: 'iscrizione incompleta' }, 400)
+    if (!Array.isArray(b.giocatori) || b.giocatori.length === 0) return json({ error: 'iscrizione incompleta' }, 400)
+    // nel 2x2 il nome squadra è facoltativo (identità = cognomi dei giocatori)
+    if (rip.tipologia !== '2x2' && !b.nomeSquadra?.trim()) return json({ error: 'iscrizione incompleta' }, 400)
     for (const g of b.giocatori) {
       if (!g.nome?.trim() || !g.cognome?.trim() || !g.email?.trim() || !g.telefono?.trim()) return json({ error: 'giocatore incompleto' }, 400)
     }
     const id = crypto.randomUUID()
-    const iscr: Iscrizione = { id, codice: p2, nomeSquadra: b.nomeSquadra, giocatori: b.giocatori, createdAt: new Date().toISOString() }
+    const iscr: Iscrizione = { id, codice: p2, nomeSquadra: b.nomeSquadra ?? '', giocatori: b.giocatori, createdAt: new Date().toISOString() }
     await env.KV.put(`iscr:${p2}:${id}`, JSON.stringify(iscr))
     return json({ ok: true, id }, 201)
   }
