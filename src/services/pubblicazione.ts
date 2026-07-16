@@ -1,5 +1,6 @@
 import { getTournament, teamsOf, groupsOf, matchesOf, saveTournament } from '../db/repositories'
 import { getClient, getReadToken } from './config'
+import { etichettaSquadra } from './teams'
 import type { PublicSnapshot } from '../types/public'
 
 export async function buildSnapshot(tournamentId: string): Promise<PublicSnapshot> {
@@ -19,7 +20,7 @@ export async function buildSnapshot(tournamentId: string): Promise<PublicSnapsho
     qualificatiPerGirone: t.qualificatiPerGirone,
     regolePunteggio: t.regolePunteggio,
     updatedAt: new Date().toISOString(),
-    teams: teams.map((x) => ({ id: x.id, nome: x.nome })),
+    teams: teams.map((x) => ({ id: x.id, nome: etichettaSquadra(x, t.tipologia) })),
     groups: groups.map((g) => ({ id: g.id, nome: g.nome, teamIds: g.teamIds })),
     matches,
     giornate: t.giornate,
