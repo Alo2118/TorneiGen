@@ -8,7 +8,7 @@ import { Badge } from '../components/Badge'
 import { db } from '../db/database'
 import { teamsOf, getTournament } from '../db/repositories'
 import { newId } from '../engine/id'
-import { numeroGiocatori, validaSquadra } from '../services/teams'
+import { numeroGiocatori, validaSquadra, etichettaSquadra } from '../services/teams'
 import type { Player, Team } from '../engine/types'
 
 function emptyPlayer(): Player {
@@ -118,7 +118,7 @@ export function TeamsScreen() {
           {squadre.map((team) => (
             <li key={team.id} className="team-card">
               <div className="team-card-head">
-                <h3>{team.nome}</h3>
+                <h3>{etichettaSquadra(team, tipologia)}</h3>
                 <div className="team-card-badges">
                   <Badge>{team.players.length} giocatori</Badge>
                   {team.stato === 'confermata' ? (
@@ -166,7 +166,12 @@ export function TeamsScreen() {
       <form className="team-form" onSubmit={handleSubmit}>
         <h2>{editingId ? 'Modifica squadra' : 'Aggiungi squadra'}</h2>
 
-        <Field label="Nome squadra" value={nome} onChange={(e) => setNome(e.target.value)} required />
+        <Field
+          label={tipologia === '2x2' ? 'Nome squadra (facoltativo)' : 'Nome squadra'}
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          required={tipologia !== '2x2'}
+        />
 
         <div className="player-rows">
           {players.map((p, i) => (

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament, teamsOf, groupsOf, matchesOf } from '../db/repositories'
 import { GironeStandings } from '../components/GironeStandings'
 import { BracketTree } from '../components/BracketTree'
+import { mappaEtichette } from '../services/teams'
 
 export function StandingsScreen() {
   const { id } = useParams()
@@ -13,7 +14,7 @@ export function StandingsScreen() {
 
   if (!id || !torneo) return null
 
-  const teamNames: Record<string, string> = Object.fromEntries(teams.map((t) => [t.id, t.nome]))
+  const teamNames: Record<string, string> = mappaEtichette(teams, torneo.tipologia)
   const matchTabellone = matches.filter((m) => m.fase === 'tabellone')
 
   return (

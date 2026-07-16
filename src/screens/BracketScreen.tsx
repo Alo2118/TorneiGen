@@ -6,6 +6,7 @@ import { generaTorneo } from '../services/generation'
 import { salvaEProppaga } from '../services/saveResult'
 import { generaFaseFinale } from '../services/faseFinale'
 import { pubblicaSeAttivo } from '../services/pubblicazione'
+import { mappaEtichette } from '../services/teams'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
 import { MatchRow } from '../components/MatchRow'
@@ -94,7 +95,7 @@ export function BracketScreen() {
   }
 
   const isKotc = torneo.formato === 'king_of_the_court'
-  const teamNames: Record<string, string> = Object.fromEntries(teams.map((t) => [t.id, t.nome]))
+  const teamNames: Record<string, string> = mappaEtichette(teams, torneo.tipologia)
   const confermate = teams.filter((t) => t.stato === 'confermata')
   const inAttesa = teams.filter((t) => t.stato === 'in_attesa')
 

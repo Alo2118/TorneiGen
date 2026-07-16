@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
 import { CalendarGrid } from '../components/CalendarGrid'
+import { mappaEtichette } from '../services/teams'
 import type { Match, Team } from '../engine/types'
 
 function nomeSquadra(id: string | null, teamNames: Record<string, string>): string {
@@ -30,7 +31,7 @@ export function CalendarScreen() {
 
   if (!id || !torneo) return null
 
-  const teamNames: Record<string, string> = Object.fromEntries(teams.map((t) => [t.id, t.nome]))
+  const teamNames: Record<string, string> = mappaEtichette(teams, torneo.tipologia)
   const partiteProgrammate = matches.filter((m): m is Match & { orario: string } => !!m.orario)
 
   async function handleProgramma() {
