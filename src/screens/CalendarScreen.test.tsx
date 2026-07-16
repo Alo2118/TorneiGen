@@ -34,7 +34,7 @@ describe('CalendarScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
-    expect(await screen.findByText('Alfa')).toBeInTheDocument()
+    expect(await screen.findByText(/Alfa/)).toBeInTheDocument()
     const m1 = await db.matches.get('m1')
     expect(m1?.orario).toBeTruthy()
   })
@@ -48,7 +48,7 @@ describe('CalendarScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
-    await userEvent.click(await screen.findByRole('button', { name: /sposta/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /alfa/i }))
 
     const dialog = screen.getByRole('dialog')
     expect(dialog).toContainElement(document.activeElement as HTMLElement)
@@ -63,7 +63,7 @@ describe('CalendarScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
-    await userEvent.click(await screen.findByRole('button', { name: /sposta/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /alfa/i }))
 
     const inputOrario = screen.getByLabelText(/orario/i)
     await userEvent.clear(inputOrario)
@@ -90,7 +90,7 @@ describe('CalendarScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
-    await userEvent.click(await screen.findByRole('button', { name: /sposta/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /alfa/i }))
 
     const inputOrario = screen.getByLabelText(/orario/i)
     await userEvent.clear(inputOrario)

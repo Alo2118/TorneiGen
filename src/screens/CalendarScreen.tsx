@@ -7,17 +7,12 @@ import { db } from '../db/database'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
+import { CalendarGrid } from '../components/CalendarGrid'
 import type { Match, Team } from '../engine/types'
 
 function nomeSquadra(id: string | null, teamNames: Record<string, string>): string {
   if (!id) return 'Da definire'
   return teamNames[id] ?? id
-}
-
-function formattaData(data: string): string {
-  const d = new Date(`${data}T00:00:00`)
-  if (Number.isNaN(d.getTime())) return data
-  return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 export function CalendarScreen() {
@@ -37,14 +32,6 @@ export function CalendarScreen() {
 
   const teamNames: Record<string, string> = Object.fromEntries(teams.map((t) => [t.id, t.nome]))
   const partiteProgrammate = matches.filter((m): m is Match & { orario: string } => !!m.orario)
-
-  const giornateChiavi = [...new Set(partiteProgrammate.map((m) => m.orario.slice(0, 10)))].sort()
-  const giornate = giornateChiavi.map((chiave) => ({
-    chiave,
-    partite: partiteProgrammate
-      .filter((m) => m.orario.slice(0, 10) === chiave)
-      .sort((a, b) => a.orario.localeCompare(b.orario)),
-  }))
 
   async function handleProgramma() {
     if (!id) return
@@ -102,32 +89,10 @@ export function CalendarScreen() {
         </p>
       )}
 
-      {giornate.length === 0 ? (
+      {partiteProgrammate.length === 0 ? (
         <p className="empty">Nessuna partita programmata ancora.</p>
       ) : (
-        <div className="bracket-groups">
-          {giornate.map((g) => (
-            <section key={g.chiave} className="bracket-group">
-              <h2>{formattaData(g.chiave)}</h2>
-              <ul className="match-list">
-                {g.partite.map((m) => (
-                  <li key={m.id} className="calendar-row">
-                    <span className="calendar-row-orario tnum">{m.orario.slice(11)}</span>
-                    <span className="calendar-row-campo">{m.campo || 'Campo da definire'}</span>
-                    <span className="calendar-row-teams">
-                      <span>{nomeSquadra(m.teamAId, teamNames)}</span>{' '}
-                      <span className="muted">vs</span>{' '}
-                      <span>{nomeSquadra(m.teamBId, teamNames)}</span>
-                    </span>
-                    <Button type="button" variant="ghost" onClick={() => apriSposta(m)}>
-                      Sposta
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <CalendarGrid matches={matches} teamNames={teamNames} onSeleziona={apriSposta} />
       )}
 
       {inSpostamento && (

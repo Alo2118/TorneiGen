@@ -380,32 +380,6 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 }
 .match-row-set-placeholder { color: var(--muted); }
 
-.calendar-row {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 1.5);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: calc(var(--space) * 1.5) calc(var(--space) * 2);
-  flex-wrap: wrap;
-}
-.calendar-row-orario {
-  font-family: var(--font-display);
-  font-weight: 600;
-  color: var(--ink);
-  min-width: 4.5ch;
-}
-.calendar-row-campo {
-  color: var(--muted);
-  font-size: .8rem;
-  background: color-mix(in srgb, var(--muted) 12%, var(--surface));
-  border-radius: 999px;
-  padding: calc(var(--space) / 2) var(--space);
-  white-space: nowrap;
-}
-.calendar-row-teams { flex: 1; min-width: 0; color: var(--ink); }
-
 /* --- ScoreControl (signature) --- */
 .score-control {
   display: flex;
@@ -846,11 +820,6 @@ button.match-box:hover { border-color: var(--sea); }
 .public-view-head { display: flex; flex-direction: column; gap: var(--space); }
 .public-view-meta { display: flex; align-items: center; gap: var(--space); }
 .public-calendar { display: flex; flex-direction: column; gap: var(--space); }
-.public-calendar-day { display: flex; flex-direction: column; gap: calc(var(--space) / 2); }
-.public-calendar-day h3 { margin: 0; font-size: .85rem; color: var(--muted); }
-.public-calendar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: calc(var(--space) / 2); }
-.public-calendar-row { display: flex; align-items: center; gap: var(--space); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space); }
-.public-calendar-court { color: var(--muted); font-size: .85rem; }
 
 /* --- Fase 7b: condivisione --- */
 .share-panel { display: flex; flex-direction: column; gap: var(--space); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: calc(var(--space) * 2); }
@@ -858,3 +827,20 @@ button.match-box:hover { border-color: var(--sea); }
 .share-link { font-family: var(--font-body); word-break: break-all; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space); margin: 0; }
 .share-actions { display: flex; flex-wrap: wrap; gap: var(--space); }
 .qr-code { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+
+/* --- Calendario a griglia orari × campi --- */
+.calendar-grid { display: flex; flex-direction: column; gap: calc(var(--space) * 2); }
+.calendar-grid-title { margin: 0 0 var(--space); font-size: 1rem; text-transform: capitalize; }
+.calendar-grid-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.calendar-grid-table { border-collapse: collapse; width: 100%; }
+.calendar-grid-table th,
+.calendar-grid-table td { border: 1px solid var(--line); padding: var(--space); text-align: left; vertical-align: top; white-space: nowrap; }
+.calendar-grid-campo { background: var(--paper); font-size: .85rem; color: var(--muted); font-weight: 600; }
+.calendar-grid-corner { position: sticky; left: 0; background: var(--paper); z-index: 1; }
+.calendar-grid-orario { position: sticky; left: 0; background: var(--surface); color: var(--ink); font-weight: 600; z-index: 1; }
+.calendar-grid-cell-empty { color: var(--muted); text-align: center; }
+.calendar-grid-cell-collisione { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.calendar-grid-avviso { color: var(--danger); margin-right: 4px; }
+.calendar-grid-match { display: block; background: none; border: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; }
+button.calendar-grid-match { cursor: pointer; }
+button.calendar-grid-match:hover { color: var(--sea); text-decoration: underline; }
