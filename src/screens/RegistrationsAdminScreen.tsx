@@ -5,6 +5,7 @@ import { db } from '../db/database'
 import { getTournament, teamsOf, saveTournament } from '../db/repositories'
 import { getClient, getReadToken } from '../services/config'
 import { nuoveIscrizioni, iscrizioneATeam } from '../services/import'
+import { etichettaIscrizione } from '../services/teams'
 import { Button } from '../components/Button'
 import type { Riepilogo, Iscrizione } from '../types/registrations'
 
@@ -207,7 +208,7 @@ export function RegistrationsAdminScreen() {
                       checked={selezionate.has(i.id)}
                       onChange={() => toggleSelezione(i.id)}
                     />
-                    <span className="field-label">{i.nomeSquadra}</span>
+                    <span className="field-label">{etichettaIscrizione(i, torneo.tipologia)}</span>
                   </label>
                   <span className="muted">{i.giocatori.map((g) => `${g.nome} ${g.cognome}`).join(', ')}</span>
                 </li>
