@@ -10,11 +10,13 @@ import { StandingsScreen } from '../screens/StandingsScreen'
 import { RegistrationsAdminScreen } from '../screens/RegistrationsAdminScreen'
 import { SettingsScreen } from '../screens/SettingsScreen'
 import { RegistrationScreen } from '../screens/RegistrationScreen'
+import { PublicViewScreen } from '../screens/PublicViewScreen'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/iscrizione/:codice" element={<RegistrationScreen />} />
+      <Route path="/pubblico/:codice" element={<PublicViewScreen />} />
       <Route element={<AppShell />}>
         <Route index element={<HomeScreen />} />
         <Route path="tornei/nuovo" element={<SetupScreen />} />

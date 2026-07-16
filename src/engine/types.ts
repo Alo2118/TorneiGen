@@ -79,6 +79,7 @@ export interface Tournament {
   durataPartitaMin?: number
   faseFinale?: 'diretta' | 'doppia'
   qualificatiPerGirone?: number | 'tutti'
+  pubblicato?: boolean
 }
 
 // --- Tipi risultato del motore (indipendenti dalla persistenza) ---

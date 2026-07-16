@@ -5,6 +5,7 @@ import { getTournament, teamsOf, groupsOf, matchesOf, replaceGenerated, saveTour
 import { generaTorneo } from '../services/generation'
 import { salvaEProppaga } from '../services/saveResult'
 import { generaFaseFinale } from '../services/faseFinale'
+import { pubblicaSeAttivo } from '../services/pubblicazione'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
 import { MatchRow } from '../components/MatchRow'
@@ -112,6 +113,7 @@ export function BracketScreen() {
       const { groups: nuoviGruppi, matches: nuovePartite } = generaTorneo(torneo, confermate)
       await replaceGenerated(torneo.id, nuoviGruppi, nuovePartite)
       await saveTournament({ ...torneo, stato: 'in_corso' })
+      void pubblicaSeAttivo(torneo.id)
     } catch (e) {
       setErrore(e instanceof Error ? e.message : 'Errore durante la generazione')
     } finally {
