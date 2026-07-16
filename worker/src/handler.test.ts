@@ -70,8 +70,8 @@ describe('handle', () => {
     expect(r.status).toBe(400)
   })
 
-  it('POST iscrizione con nomeSquadra di soli spazi -> 400', async () => {
-    const e = env({ 'torneo:ABC': riepilogo() })
+  it('POST iscrizione 4x4 con nomeSquadra di soli spazi -> 400', async () => {
+    const e = env({ 'torneo:ABC': riepilogo({ tipologia: '4x4' }) })
     const r = await handle(req('POST', '/api/iscrizioni/ABC', { body: { nomeSquadra: '   ', giocatori: [{ nome: 'A', cognome: 'B', email: 'a@x.it', telefono: '1' }] } }), e)
     expect(r.status).toBe(400)
   })
@@ -87,6 +87,12 @@ describe('handle', () => {
     expect(r.status).toBe(201)
     const { keys } = await e.KV.list({ prefix: 'iscr:ABC:' })
     expect(keys.length).toBe(1)
+  })
+
+  it('POST iscrizione 2x2 con nomeSquadra VUOTO ("") e giocatori validi -> 201', async () => {
+    const e = env({ 'torneo:ABC': riepilogo({ tipologia: '2x2' }) })
+    const r = await handle(req('POST', '/api/iscrizioni/ABC', { body: { nomeSquadra: '', giocatori: giocatori2 } }), e)
+    expect(r.status).toBe(201)
   })
 
   it('POST iscrizione 4x4 SENZA nomeSquadra -> 400', async () => {

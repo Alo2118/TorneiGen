@@ -74,8 +74,6 @@ export async function handle(req: Request, env: Env): Promise<Response> {
       return json({ error: 'JSON non valido' }, 400)
     }
     if (!Array.isArray(b.giocatori) || b.giocatori.length === 0) return json({ error: 'iscrizione incompleta' }, 400)
-    // if nomeSquadra is provided, it must not be empty/spaces
-    if (b.nomeSquadra != null && !b.nomeSquadra.trim()) return json({ error: 'iscrizione incompleta' }, 400)
     // nel 2x2 il nome squadra è facoltativo (identità = cognomi dei giocatori)
     if (rip.tipologia !== '2x2' && !b.nomeSquadra?.trim()) return json({ error: 'iscrizione incompleta' }, 400)
     for (const g of b.giocatori) {
