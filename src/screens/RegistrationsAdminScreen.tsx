@@ -122,6 +122,7 @@ export function RegistrationsAdminScreen() {
     setErroreImport(null)
     try {
       await db.teams.bulkPut(scelte.map((i) => iscrizioneATeam(i, id)))
+      notificaModificaOrg(id)
       setImportate(scelte.length)
       setDaImportare(null)
       setSelezionate(new Set())
