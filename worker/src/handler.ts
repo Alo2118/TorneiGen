@@ -84,6 +84,13 @@ async function sessione(req: Request, env: Env): Promise<SessioneUtente | null> 
   const t = estraiBearer(req)
   return t ? verificaJWT(t, env.AUTH_SECRET) : null
 }
+
+async function guardiaAdmin(req: Request, env: Env): Promise<SessioneUtente | Response> {
+  const s = await sessione(req, env)
+  if (!s) return json({ error: 'non autorizzato' }, 401)
+  if (s.ruolo !== 'admin') return json({ error: 'vietato' }, 403)
+  return s
+}
 function emailValida(e: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 }
@@ -147,6 +154,44 @@ export async function handle(req: Request, env: Env): Promise<Response> {
     const s = await sessione(req, env)
     if (!s) return json({ error: 'non autorizzato' }, 401)
     return json({ email: s.email, ruolo: s.ruolo, societaId: s.societaId })
+  }
+
+  // GET /api/admin/utenti
+  if (req.method === 'GET' && p1 === 'admin' && p2 === 'utenti' && !p3) {
+    const g = await guardiaAdmin(req, env)
+    if (g instanceof Response) return g
+    const utenti = (await env.USERS.elenco()).map((u) => ({
+      id: u.id, email: u.email, ruolo: u.ruolo, abilitato: u.abilitato,
+      societaId: u.societa_id, societaRichiesta: u.societa_richiesta,
+    }))
+    return json({ utenti })
+  }
+
+  // GET/POST /api/admin/societa
+  if (p1 === 'admin' && p2 === 'societa' && !p3 && (req.method === 'GET' || req.method === 'POST')) {
+    const g = await guardiaAdmin(req, env)
+    if (g instanceof Response) return g
+    if (req.method === 'GET') return json({ societa: await env.SOCIETA.elenco() })
+    let b: { nome?: unknown }
+    try { b = (await req.json()) as typeof b } catch { return json({ error: 'JSON non valido' }, 400) }
+    const nome = typeof b.nome === 'string' ? b.nome.trim() : ''
+    if (!nome) return json({ error: 'nome mancante' }, 400)
+    const rec = { id: crypto.randomUUID(), nome, creato_il: new Date().toISOString() }
+    await env.SOCIETA.crea(rec)
+    return json(rec)
+  }
+
+  // POST /api/admin/utenti/:id/abilita
+  if (req.method === 'POST' && p1 === 'admin' && p2 === 'utenti' && p3 && parts[4] === 'abilita') {
+    const g = await guardiaAdmin(req, env)
+    if (g instanceof Response) return g
+    let b: { societaId?: unknown; abilitato?: unknown }
+    try { b = (await req.json()) as typeof b } catch { return json({ error: 'JSON non valido' }, 400) }
+    const societaId = typeof b.societaId === 'string' ? b.societaId : ''
+    if (!societaId) return json({ error: 'società mancante' }, 400)
+    const abilitato = b.abilitato === undefined ? true : Boolean(b.abilitato)
+    await env.USERS.abilita(p3, societaId, abilitato)
+    return json({ ok: true })
   }
 
   // POST /api/torneo  (organizzatore)
