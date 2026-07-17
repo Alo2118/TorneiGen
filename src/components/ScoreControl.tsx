@@ -47,10 +47,9 @@ export function ScoreControl({ regole, setIniziali, onSalva }: Props) {
   const visibili = setDaMostrare(sets, regole)
   const setAttivo = visibili - 1
 
-  function step(index: number, squadra: 'puntiA' | 'puntiB', delta: number) {
-    setSets((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, [squadra]: Math.max(0, s[squadra] + delta) } : s)),
-    )
+  function setPunto(index: number, squadra: 'puntiA' | 'puntiB', raw: string) {
+    const val = Math.max(0, Math.floor(Number(raw) || 0))
+    setSets((prev) => prev.map((s, i) => (i === index ? { ...s, [squadra]: val } : s)))
   }
 
   return (
@@ -71,47 +70,27 @@ export function ScoreControl({ regole, setIniziali, onSalva }: Props) {
             <div key={i} className={classi}>
               <span className="score-control-label">{isSpareggio ? 'Tie-break' : `Set ${i + 1}`}</span>
               <div className="score-control-teams">
-                <div className="score-control-team">
-                  <button
-                    type="button"
-                    className="score-control-stepper"
-                    aria-label={`Diminuisci punteggio squadra A, set ${i + 1}`}
-                    onClick={() => step(i, 'puntiA', -1)}
-                    disabled={s.puntiA <= 0}
-                  >
-                    −
-                  </button>
-                  <span className="score-control-value tnum">{s.puntiA}</span>
-                  <button
-                    type="button"
-                    className="score-control-stepper"
-                    aria-label={`Aumenta punteggio squadra A, set ${i + 1}`}
-                    onClick={() => step(i, 'puntiA', 1)}
-                  >
-                    +
-                  </button>
-                </div>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className="score-control-input tnum"
+                  aria-label={`Punteggio squadra A, set ${i + 1}`}
+                  value={s.puntiA}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setPunto(i, 'puntiA', e.target.value)}
+                />
                 <span className="score-control-sep">–</span>
-                <div className="score-control-team">
-                  <button
-                    type="button"
-                    className="score-control-stepper"
-                    aria-label={`Diminuisci punteggio squadra B, set ${i + 1}`}
-                    onClick={() => step(i, 'puntiB', -1)}
-                    disabled={s.puntiB <= 0}
-                  >
-                    −
-                  </button>
-                  <span className="score-control-value tnum">{s.puntiB}</span>
-                  <button
-                    type="button"
-                    className="score-control-stepper"
-                    aria-label={`Aumenta punteggio squadra B, set ${i + 1}`}
-                    onClick={() => step(i, 'puntiB', 1)}
-                  >
-                    +
-                  </button>
-                </div>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className="score-control-input tnum"
+                  aria-label={`Punteggio squadra B, set ${i + 1}`}
+                  value={s.puntiB}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setPunto(i, 'puntiB', e.target.value)}
+                />
               </div>
             </div>
           )
