@@ -15,6 +15,39 @@ export interface OrgStore {
   delete(codice: string): Promise<void>
 }
 
+export interface UtenteRecord {
+  id: string
+  email: string
+  password_hash: string
+  salt: string
+  iterazioni: number
+  ruolo: 'utente' | 'admin'
+  abilitato: number
+  societa_id: string | null
+  societa_richiesta: string | null
+  creato_il: string
+}
+
+export interface SocietaRecord {
+  id: string
+  nome: string
+  creato_il: string
+}
+
+export interface UserStore {
+  perEmail(email: string): Promise<UtenteRecord | null>
+  perId(id: string): Promise<UtenteRecord | null>
+  crea(u: UtenteRecord): Promise<void>
+  abilita(id: string, societaId: string, abilitato: boolean): Promise<void>
+  elenco(): Promise<UtenteRecord[]>
+}
+
+export interface SocietaStore {
+  elenco(): Promise<SocietaRecord[]>
+  crea(s: SocietaRecord): Promise<void>
+  perId(id: string): Promise<SocietaRecord | null>
+}
+
 export interface Env {
   KV: KV
   READ_TOKEN: string
