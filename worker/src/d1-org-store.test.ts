@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { d1OrgStore } from './d1-org-store'
 import type { OrgRecord } from '../../src/types/org'
 
-// Fake D1 minimale: registra le query e restituisce righe pilotate
+// Fake D1 minimale: registra le query e restituisce righe pilotate.
+// run() su una INSERT scrive davvero in rowByCodice (simulando le colonne
+// codice/doc/version/updatedAt/societa_id nell'ordine usato da d1OrgStore.put),
+// cosi' un put() seguito da un get() e' un vero round-trip, non solo un mock.
 function fakeD1(rowByCodice: Record<string, OrgRecord> = {}) {
   const calls: { sql: string; binds: unknown[] }[] = []
   return {
@@ -17,6 +20,16 @@ function fakeD1(rowByCodice: Record<string, OrgRecord> = {}) {
               return (rowByCodice[codice] as unknown as T) ?? null
             },
             async run() {
+              if (/^insert into organizzazioni/i.test(sql)) {
+                const [codice, doc, version, updatedAt, societaId] = binds as [
+                  string,
+                  string,
+                  number,
+                  string,
+                  string | null,
+                ]
+                rowByCodice[codice] = { codice, doc, version, updatedAt, societaId: societaId ?? null }
+              }
               return {}
             },
           }
@@ -41,7 +54,7 @@ describe('d1OrgStore', () => {
     await d1OrgStore(db).put({ codice: 'ABC', doc: '{}', version: 2, updatedAt: 't' })
     const c = db.calls.at(-1)!
     expect(c.sql).toMatch(/insert into organizzazioni/i)
-    expect(c.binds).toEqual(['ABC', '{}', 2, 't'])
+    expect(c.binds).toEqual(['ABC', '{}', 2, 't', null])
   })
   it('delete cancella per codice', async () => {
     const db = fakeD1()
@@ -49,5 +62,25 @@ describe('d1OrgStore', () => {
     const c = db.calls.at(-1)!
     expect(c.sql).toMatch(/delete from organizzazioni/i)
     expect(c.binds).toEqual(['ABC'])
+  })
+
+  it('round-trip: put con societaId lo persiste e get lo restituisce (chiude il leak cross-società)', async () => {
+    const db = fakeD1()
+    const store = d1OrgStore(db)
+    await store.put({ codice: 'ABC', doc: '{"n":1}', version: 1, updatedAt: 't1', societaId: 's1' })
+    const row = await store.get('ABC')
+    expect(row?.societaId).toBe('s1')
+  })
+
+  it('round-trip: put senza societaId persiste null invece di perdere la colonna', async () => {
+    const db = fakeD1()
+    const store = d1OrgStore(db)
+    await store.put({ codice: 'DEF', doc: '{}', version: 1, updatedAt: 't1' })
+    const row = await store.get('DEF')
+    expect(row?.societaId).toBeNull()
+
+    await store.put({ codice: 'GHI', doc: '{}', version: 1, updatedAt: 't1', societaId: null })
+    const row2 = await store.get('GHI')
+    expect(row2?.societaId).toBeNull()
   })
 })
