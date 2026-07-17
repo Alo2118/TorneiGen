@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 
 interface Opzioni {
@@ -17,10 +17,15 @@ export function usePointerDrag(opz: Opzioni = {}): {
   const stato = useRef<{ x0: number; y0: number; attivo: boolean } | null>(null)
   const opzRef = useRef(opz)
   opzRef.current = opz
+  // Teardown della sessione di drag attiva (rimuove i listener su window).
+  // Non-null solo mentre pointermove/pointerup sono agganciati.
+  const sessioneRef = useRef<null | (() => void)>(null)
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent) => {
       if (e.button !== 0) return
+      // Guardia re-entrante: una sessione è già attiva (es. multi-touch), ignora.
+      if (sessioneRef.current) return
       stato.current = { x0: e.clientX, y0: e.clientY, attivo: false }
 
       const muovi = (ev: PointerEvent) => {
@@ -37,6 +42,7 @@ export function usePointerDrag(opz: Opzioni = {}): {
       const rilascia = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', muovi)
         window.removeEventListener('pointerup', rilascia)
+        sessioneRef.current = null
         const s = stato.current
         stato.current = null
         if (s?.attivo) {
@@ -46,9 +52,23 @@ export function usePointerDrag(opz: Opzioni = {}): {
       }
       window.addEventListener('pointermove', muovi)
       window.addEventListener('pointerup', rilascia)
+      sessioneRef.current = () => {
+        window.removeEventListener('pointermove', muovi)
+        window.removeEventListener('pointerup', rilascia)
+        sessioneRef.current = null
+      }
     },
     [soglia],
   )
+
+  // Se il componente viene smontato a metà drag (es. cambio rotta), rimuove
+  // eventuali listener ancora agganciati a window per evitare che onRilascia
+  // scatti su un componente ormai smontato.
+  useEffect(() => {
+    return () => {
+      sessioneRef.current?.()
+    }
+  }, [])
 
   return { trascinando, handlers: { onPointerDown } }
 }

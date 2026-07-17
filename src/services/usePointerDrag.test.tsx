@@ -28,4 +28,27 @@ describe('usePointerDrag', () => {
     fireEvent.pointerUp(window, { clientX: 30, clientY: 40 })
     expect(onRilascia).toHaveBeenCalledWith(30, 40)
   })
+
+  it('rimuove i listener allo smontaggio a metà drag: pointerup successivo non chiama onRilascia', () => {
+    const onInizio = vi.fn(); const onRilascia = vi.fn()
+    const { unmount } = render(<Prova onInizio={onInizio} onRilascia={onRilascia} />)
+    fireEvent.pointerDown(screen.getByTestId('drag'), { clientX: 0, clientY: 0, button: 0 })
+    fireEvent.pointerMove(window, { clientX: 20, clientY: 5 })
+    expect(onInizio).toHaveBeenCalledTimes(1)
+    unmount()
+    fireEvent.pointerUp(window, { clientX: 30, clientY: 40 })
+    expect(onRilascia).not.toHaveBeenCalled()
+  })
+
+  it('un secondo pointerDown senza pointerup nel mezzo non impila una seconda sessione', () => {
+    const onInizio = vi.fn(); const onRilascia = vi.fn()
+    render(<Prova onInizio={onInizio} onRilascia={onRilascia} />)
+    fireEvent.pointerDown(screen.getByTestId('drag'), { clientX: 0, clientY: 0, button: 0 })
+    fireEvent.pointerDown(screen.getByTestId('drag'), { clientX: 100, clientY: 100, button: 0 })
+    fireEvent.pointerMove(window, { clientX: 20, clientY: 5 })
+    expect(onInizio).toHaveBeenCalledTimes(1)
+    fireEvent.pointerUp(window, { clientX: 30, clientY: 40 })
+    expect(onRilascia).toHaveBeenCalledTimes(1)
+    expect(onRilascia).toHaveBeenCalledWith(30, 40)
+  })
 })
