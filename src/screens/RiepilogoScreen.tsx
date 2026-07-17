@@ -145,7 +145,7 @@ export function RiepilogoScreen() {
           variant="ghost"
           disabled={sincronizzando || !getReadToken()}
           onClick={() => {
-            if (torneo.codiceIscrizione) void sincronizzaIscrizioni(torneo.codiceIscrizione, id, () => false)
+            if (torneo.codiceIscrizione) void sincronizzaIscrizioni(torneo.codiceIscrizione, id, torneo.tipologia, () => false)
           }}
         >
           Aggiorna iscrizioni
