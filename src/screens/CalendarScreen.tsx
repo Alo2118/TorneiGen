@@ -8,9 +8,11 @@ import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
 import { CalendarGrid } from '../components/CalendarGrid'
+import { ScoreControl } from '../components/ScoreControl'
 import { mappaEtichette } from '../services/teams'
 import { notificaModificaOrg } from '../services/orgSync'
-import type { Match, Team } from '../engine/types'
+import { salvaEProppaga } from '../services/saveResult'
+import type { Match, Team, SetScore } from '../engine/types'
 
 function nomeSquadra(id: string | null, teamNames: Record<string, string>): string {
   if (!id) return 'Da definire'
@@ -29,6 +31,7 @@ export function CalendarScreen() {
   const [inSpostamento, setInSpostamento] = useState<Match | null>(null)
   const [nuovoOrario, setNuovoOrario] = useState('')
   const [nuovoCampo, setNuovoCampo] = useState('')
+  const [matchInPunteggio, setMatchInPunteggio] = useState<Match | null>(null)
 
   if (!id || !torneo) return null
 
@@ -75,6 +78,13 @@ export function CalendarScreen() {
     chiudiSposta()
   }
 
+  async function handleSalvaPunteggio(set: SetScore[]) {
+    if (!matchInPunteggio || !torneo) return
+    await salvaEProppaga(torneo.id, matchInPunteggio.id, set, torneo.regolePunteggio)
+    toast('Punteggio salvato')
+    setMatchInPunteggio(null)
+  }
+
   return (
     <section className="bracket">
       <header className="bracket-head">
@@ -95,7 +105,7 @@ export function CalendarScreen() {
       {partiteProgrammate.length === 0 ? (
         <p className="empty">Nessuna partita programmata ancora.</p>
       ) : (
-        <CalendarGrid matches={matches} teamNames={teamNames} onSeleziona={apriSposta} />
+        <CalendarGrid matches={matches} teamNames={teamNames} onPunteggio={(m) => setMatchInPunteggio(m)} onSposta={apriSposta} />
       )}
 
       {inSpostamento && (
@@ -129,6 +139,16 @@ export function CalendarScreen() {
               Salva
             </Button>
           </div>
+        </Modal>
+      )}
+
+      {matchInPunteggio && (
+        <Modal
+          open
+          titolo={`${nomeSquadra(matchInPunteggio.teamAId, teamNames)} vs ${nomeSquadra(matchInPunteggio.teamBId, teamNames)}`}
+          onClose={() => setMatchInPunteggio(null)}
+        >
+          <ScoreControl regole={torneo.regolePunteggio} setIniziali={matchInPunteggio.set} onSalva={handleSalvaPunteggio} />
         </Modal>
       )}
     </section>

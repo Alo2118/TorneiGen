@@ -48,7 +48,7 @@ describe('CalendarScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
-    await userEvent.click(await screen.findByRole('button', { name: /alfa/i }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Sposta' }))
 
     const dialog = screen.getByRole('dialog')
     expect(dialog).toContainElement(document.activeElement as HTMLElement)
@@ -63,7 +63,7 @@ describe('CalendarScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
-    await userEvent.click(await screen.findByRole('button', { name: /alfa/i }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Sposta' }))
 
     const inputOrario = screen.getByLabelText(/orario/i)
     await userEvent.clear(inputOrario)
@@ -90,7 +90,7 @@ describe('CalendarScreen', () => {
       </MemoryRouter>,
     )
     await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
-    await userEvent.click(await screen.findByRole('button', { name: /alfa/i }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Sposta' }))
 
     const inputOrario = screen.getByLabelText(/orario/i)
     await userEvent.clear(inputOrario)
@@ -100,5 +100,19 @@ describe('CalendarScreen', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     const m1 = await db.matches.get('m1')
     expect(m1?.orario).toBeTruthy()
+  })
+
+  it('apre la modale Punteggio dal pulsante Punteggio', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/calendario']}>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/calendario" element={<CalendarScreen />} /></Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /programma calendario/i }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Punteggio' }))
+
+    expect(screen.getByLabelText('Punteggio squadra A, set 1')).toBeInTheDocument()
   })
 })

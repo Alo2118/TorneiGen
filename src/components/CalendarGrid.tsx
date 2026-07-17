@@ -5,7 +5,8 @@ import type { CellaGriglia } from '../engine/calendarGrid'
 interface Props {
   matches: Match[]
   teamNames: Record<string, string>
-  onSeleziona?: (match: Match) => void
+  onPunteggio?: (match: Match) => void
+  onSposta?: (match: Match) => void
 }
 
 function nome(id: string | null, names: Record<string, string>): string {
@@ -21,7 +22,7 @@ function etichettaCampo(campo: string): string {
   return campo === CAMPO_VUOTO ? campo : `Campo ${campo}`
 }
 
-export function CalendarGrid({ matches, teamNames, onSeleziona }: Props) {
+export function CalendarGrid({ matches, teamNames, onPunteggio, onSposta }: Props) {
   const giornate = buildCalendarGrid(matches)
   if (giornate.length === 0) return null
 
@@ -59,12 +60,23 @@ export function CalendarGrid({ matches, teamNames, onSeleziona }: Props) {
                           )}
                           {partite.map((mm) => {
                             const testo = `${nome(mm.teamAId, teamNames)} — ${nome(mm.teamBId, teamNames)}`
-                            return onSeleziona ? (
-                              <button key={mm.id} type="button" className="calendar-grid-match" onClick={() => onSeleziona(mm)}>
-                                {testo}
-                              </button>
-                            ) : (
-                              <span key={mm.id} className="calendar-grid-match">{testo}</span>
+                            const risultato = mm.set.length > 0 ? mm.set.map((s) => `${s.puntiA}–${s.puntiB}`).join(' ') : null
+                            const interattiva = Boolean(onPunteggio || onSposta)
+                            return (
+                              <div key={mm.id} className="calendar-grid-match">
+                                <span className="calendar-grid-match-teams">{testo}</span>
+                                {risultato && <span className="calendar-grid-match-score tnum">{risultato}</span>}
+                                {interattiva && (
+                                  <div className="calendar-grid-match-actions">
+                                    {onPunteggio && mm.teamAId && mm.teamBId && (
+                                      <button type="button" className="calendar-grid-action" onClick={() => onPunteggio(mm)}>Punteggio</button>
+                                    )}
+                                    {onSposta && (
+                                      <button type="button" className="calendar-grid-action" onClick={() => onSposta(mm)}>Sposta</button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             )
                           })}
                         </td>
