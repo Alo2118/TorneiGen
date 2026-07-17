@@ -1,6 +1,7 @@
 import type { Riepilogo, Iscrizione } from '../../src/types/registrations'
 import type { PublicSnapshot } from '../../src/types/public'
 import type { OrgRecord } from '../../src/types/org'
+import { hashPassword, verificaPassword, creaJWT, verificaJWT, estraiBearer, type SessioneUtente } from './auth'
 
 export interface KV {
   get(key: string): Promise<string | null>
@@ -53,6 +54,10 @@ export interface Env {
   READ_TOKEN: string
   WRITE_TOKEN: string
   ORG: OrgStore
+  USERS: UserStore
+  SOCIETA: SocietaStore
+  AUTH_SECRET: string
+  ADMIN_EMAIL: string
 }
 
 const CORS = {
@@ -75,6 +80,14 @@ function autorizzatoScrittura(req: Request, env: Env): boolean {
   return !!m && m[1] === env.WRITE_TOKEN
 }
 
+async function sessione(req: Request, env: Env): Promise<SessioneUtente | null> {
+  const t = estraiBearer(req)
+  return t ? verificaJWT(t, env.AUTH_SECRET) : null
+}
+function emailValida(e: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+}
+
 export async function handle(req: Request, env: Env): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
 
@@ -82,6 +95,53 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   const [p0, p1, p2, p3] = parts
 
   if (p0 !== 'api') return json({ error: 'not found' }, 404)
+
+  // POST /api/auth/registrazione
+  if (req.method === 'POST' && p1 === 'auth' && p2 === 'registrazione' && !p3) {
+    let b: { email?: unknown; password?: unknown; societa?: unknown }
+    try { b = (await req.json()) as typeof b } catch { return json({ error: 'JSON non valido' }, 400) }
+    const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : ''
+    const password = typeof b.password === 'string' ? b.password : ''
+    if (!emailValida(email) || password.length < 8) return json({ error: 'dati non validi' }, 400)
+    if (await env.USERS.perEmail(email)) return json({ error: 'email già registrata' }, 409)
+    const isAdmin = email === env.ADMIN_EMAIL.trim().toLowerCase()
+    const { hash, salt, iterazioni } = await hashPassword(password)
+    const utente = {
+      id: crypto.randomUUID(), email, password_hash: hash, salt, iterazioni,
+      ruolo: (isAdmin ? 'admin' : 'utente') as 'utente' | 'admin',
+      abilitato: isAdmin ? 1 : 0, societa_id: null,
+      societa_richiesta: typeof b.societa === 'string' ? b.societa.trim() : null,
+      creato_il: new Date().toISOString(),
+    }
+    await env.USERS.crea(utente)
+    if (isAdmin) {
+      const token = await creaJWT({ sub: utente.id, email, ruolo: 'admin', societaId: null }, env.AUTH_SECRET)
+      return json({ token, utente: { email, ruolo: 'admin', societaId: null } })
+    }
+    return json({ stato: 'in_attesa' })
+  }
+
+  // POST /api/auth/accesso
+  if (req.method === 'POST' && p1 === 'auth' && p2 === 'accesso' && !p3) {
+    let b: { email?: unknown; password?: unknown }
+    try { b = (await req.json()) as typeof b } catch { return json({ error: 'JSON non valido' }, 400) }
+    const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : ''
+    const password = typeof b.password === 'string' ? b.password : ''
+    const u = await env.USERS.perEmail(email)
+    if (!u || !(await verificaPassword(password, u.password_hash, u.salt, u.iterazioni))) {
+      return json({ error: 'credenziali non valide' }, 401)
+    }
+    if (!u.abilitato) return json({ error: 'in_attesa' }, 403)
+    const token = await creaJWT({ sub: u.id, email: u.email, ruolo: u.ruolo, societaId: u.societa_id }, env.AUTH_SECRET)
+    return json({ token, utente: { email: u.email, ruolo: u.ruolo, societaId: u.societa_id } })
+  }
+
+  // GET /api/auth/io
+  if (req.method === 'GET' && p1 === 'auth' && p2 === 'io' && !p3) {
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
+    return json({ email: s.email, ruolo: s.ruolo, societaId: s.societaId })
+  }
 
   // POST /api/torneo  (organizzatore)
   if (req.method === 'POST' && p1 === 'torneo' && !p2) {

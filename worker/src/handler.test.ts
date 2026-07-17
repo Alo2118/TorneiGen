@@ -1,13 +1,32 @@
 import { describe, it, expect } from 'vitest'
-import { handle, type Env } from './handler'
+import { handle, type Env, type UtenteRecord, type SocietaRecord } from './handler'
 import { fakeKV } from './fake-kv'
 import { fakeOrgStore } from './fake-org-store'
+import { fakeUserStore } from './fake-user-store'
+import { fakeSocietaStore } from './fake-societa-store'
+import { hashPassword } from './auth'
 import type { OrgRecord } from '../../src/types/org'
 
 const TOKEN = 'segreto'
 const WTOKEN = 'scrivi'
-function env(seed?: Record<string, string>, orgSeed?: OrgRecord[]): Env {
-  return { KV: fakeKV(seed), READ_TOKEN: TOKEN, WRITE_TOKEN: WTOKEN, ORG: fakeOrgStore(orgSeed) }
+const AUTH_SECRET = 'seg-test'
+const ADMIN_EMAIL = 'admin@x.it'
+function env(
+  seed?: Record<string, string>,
+  orgSeed?: OrgRecord[],
+  userSeed?: UtenteRecord[],
+  societaSeed?: SocietaRecord[],
+): Env {
+  return {
+    KV: fakeKV(seed),
+    READ_TOKEN: TOKEN,
+    WRITE_TOKEN: WTOKEN,
+    ORG: fakeOrgStore(orgSeed),
+    USERS: fakeUserStore(userSeed),
+    SOCIETA: fakeSocietaStore(societaSeed),
+    AUTH_SECRET,
+    ADMIN_EMAIL,
+  }
 }
 const riepilogo = (over = {}) => JSON.stringify({ codice: 'ABC', nome: 'Coppa', tipologia: '2x2', formato: 'girone_italiana', chiuso: false, updatedAt: '', ...over })
 const auth = { authorization: `Bearer ${TOKEN}` }
@@ -239,5 +258,104 @@ describe('handle', () => {
   it('DELETE /api/org/:codice senza token -> 401', async () => {
     const r = await handle(req('DELETE', '/api/org/ABC'), env({}, [orgRow()]))
     expect(r.status).toBe(401)
+  })
+
+  describe('auth', () => {
+    it('POST /api/auth/registrazione crea utente disabilitato in attesa', async () => {
+      const e = env()
+      const r = await handle(req('POST', '/api/auth/registrazione', { body: { email: 'a@x.it', password: 'password1', societa: 'Club' } }), e)
+      expect(r.status).toBe(200)
+      expect(await r.json()).toEqual({ stato: 'in_attesa' })
+      const u = await e.USERS.perEmail('a@x.it')
+      expect(u).not.toBeNull()
+      expect(u?.abilitato).toBe(0)
+      expect(u?.ruolo).toBe('utente')
+      expect(u?.societa_richiesta).toBe('Club')
+    })
+
+    it('POST /api/auth/registrazione con ADMIN_EMAIL crea admin abilitato e ritorna token', async () => {
+      const e = env()
+      const r = await handle(req('POST', '/api/auth/registrazione', { body: { email: ADMIN_EMAIL, password: 'password1' } }), e)
+      expect(r.status).toBe(200)
+      const b = await r.json()
+      expect(typeof b.token).toBe('string')
+      expect(b.utente).toEqual({ email: ADMIN_EMAIL, ruolo: 'admin', societaId: null })
+      const u = await e.USERS.perEmail(ADMIN_EMAIL)
+      expect(u?.ruolo).toBe('admin')
+      expect(u?.abilitato).toBe(1)
+    })
+
+    it('POST /api/auth/registrazione email duplicata -> 409', async () => {
+      const e = env()
+      await handle(req('POST', '/api/auth/registrazione', { body: { email: 'a@x.it', password: 'password1' } }), e)
+      const r = await handle(req('POST', '/api/auth/registrazione', { body: { email: 'a@x.it', password: 'password2' } }), e)
+      expect(r.status).toBe(409)
+    })
+
+    it('POST /api/auth/registrazione password troppo corta -> 400', async () => {
+      const r = await handle(req('POST', '/api/auth/registrazione', { body: { email: 'a@x.it', password: 'corta' } }), env())
+      expect(r.status).toBe(400)
+    })
+
+    it('POST /api/auth/registrazione email non valida -> 400', async () => {
+      const r = await handle(req('POST', '/api/auth/registrazione', { body: { email: 'non-una-email', password: 'password1' } }), env())
+      expect(r.status).toBe(400)
+    })
+
+    it('POST /api/auth/accesso con utente disabilitato -> 403 in_attesa', async () => {
+      const { hash, salt, iterazioni } = await hashPassword('password1')
+      const utente: UtenteRecord = {
+        id: '1', email: 'a@x.it', password_hash: hash, salt, iterazioni,
+        ruolo: 'utente', abilitato: 0, societa_id: null, societa_richiesta: null, creato_il: '',
+      }
+      const e = env(undefined, undefined, [utente])
+      const r = await handle(req('POST', '/api/auth/accesso', { body: { email: 'a@x.it', password: 'password1' } }), e)
+      expect(r.status).toBe(403)
+      expect(await r.json()).toEqual({ error: 'in_attesa' })
+    })
+
+    it('POST /api/auth/accesso con credenziali giuste (abilitato) -> 200 token+utente', async () => {
+      const { hash, salt, iterazioni } = await hashPassword('password1')
+      const utente: UtenteRecord = {
+        id: '1', email: 'admin@x.it', password_hash: hash, salt, iterazioni,
+        ruolo: 'admin', abilitato: 1, societa_id: 'soc-1', societa_richiesta: null, creato_il: '',
+      }
+      const e = env(undefined, undefined, [utente])
+      const r = await handle(req('POST', '/api/auth/accesso', { body: { email: 'admin@x.it', password: 'password1' } }), e)
+      expect(r.status).toBe(200)
+      const b = await r.json()
+      expect(typeof b.token).toBe('string')
+      expect(b.utente).toEqual({ email: 'admin@x.it', ruolo: 'admin', societaId: 'soc-1' })
+    })
+
+    it('POST /api/auth/accesso con password errata -> 401', async () => {
+      const { hash, salt, iterazioni } = await hashPassword('password1')
+      const utente: UtenteRecord = {
+        id: '1', email: 'a@x.it', password_hash: hash, salt, iterazioni,
+        ruolo: 'utente', abilitato: 1, societa_id: null, societa_richiesta: null, creato_il: '',
+      }
+      const e = env(undefined, undefined, [utente])
+      const r = await handle(req('POST', '/api/auth/accesso', { body: { email: 'a@x.it', password: 'sbagliata' } }), e)
+      expect(r.status).toBe(401)
+    })
+
+    it('GET /api/auth/io con Bearer valido -> dati sessione', async () => {
+      const e = env()
+      const rReg = await handle(req('POST', '/api/auth/registrazione', { body: { email: ADMIN_EMAIL, password: 'password1' } }), e)
+      const { token } = await rReg.json()
+      const r = await handle(req('GET', '/api/auth/io', { headers: { authorization: `Bearer ${token}` } }), e)
+      expect(r.status).toBe(200)
+      expect(await r.json()).toEqual({ email: ADMIN_EMAIL, ruolo: 'admin', societaId: null })
+    })
+
+    it('GET /api/auth/io senza Bearer -> 401', async () => {
+      const r = await handle(req('GET', '/api/auth/io'), env())
+      expect(r.status).toBe(401)
+    })
+
+    it('GET /api/auth/io con token invalido -> 401', async () => {
+      const r = await handle(req('GET', '/api/auth/io', { headers: { authorization: 'Bearer invalido' } }), env())
+      expect(r.status).toBe(401)
+    })
   })
 })
