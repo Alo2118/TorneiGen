@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import { handle, type Env } from './handler'
 import { fakeKV } from './fake-kv'
+import { fakeOrgStore } from './fake-org-store'
+import type { OrgRecord } from '../../src/types/org'
 
 const TOKEN = 'segreto'
-function env(seed?: Record<string, string>): Env {
-  return { KV: fakeKV(seed), READ_TOKEN: TOKEN }
+const WTOKEN = 'scrivi'
+function env(seed?: Record<string, string>, orgSeed?: OrgRecord[]): Env {
+  return { KV: fakeKV(seed), READ_TOKEN: TOKEN, WRITE_TOKEN: WTOKEN, ORG: fakeOrgStore(orgSeed) }
 }
 const riepilogo = (over = {}) => JSON.stringify({ codice: 'ABC', nome: 'Coppa', tipologia: '2x2', formato: 'girone_italiana', chiuso: false, updatedAt: '', ...over })
 const auth = { authorization: `Bearer ${TOKEN}` }
+const authW = { authorization: `Bearer ${WTOKEN}` }
 const req = (method: string, path: string, opts: { body?: unknown; headers?: Record<string, string> } = {}) =>
   new Request('http://x' + path, {
     method,
@@ -178,6 +182,62 @@ describe('handle', () => {
 
   it('DELETE /api/pubblico/:codice senza token -> 401', async () => {
     const r = await handle(req('DELETE', '/api/pubblico/ABC'), env({ 'pubblico:ABC': snapshot() }))
+    expect(r.status).toBe(401)
+  })
+
+  const orgRow = (over: Partial<OrgRecord> = {}): OrgRecord =>
+    ({ codice: 'ABC', doc: '{"x":1}', version: 1, updatedAt: '', ...over })
+
+  it('GET /api/org/:codice senza WRITE_TOKEN -> 401', async () => {
+    const r = await handle(req('GET', '/api/org/ABC'), env())
+    expect(r.status).toBe(401)
+  })
+  it('GET /api/org/:codice inesistente (con token) -> 404', async () => {
+    const r = await handle(req('GET', '/api/org/NOPE', { headers: authW }), env())
+    expect(r.status).toBe(404)
+  })
+  it('GET /api/org/:codice esistente -> 200 con doc e version', async () => {
+    const r = await handle(req('GET', '/api/org/ABC', { headers: authW }), env({}, [orgRow({ doc: '{"n":2}', version: 5 })]))
+    expect(r.status).toBe(200)
+    const b = await r.json()
+    expect(b.version).toBe(5)
+    expect(b.doc).toBe('{"n":2}')
+  })
+  it('PUT nuovo documento (version 0) -> 200 version 1 e salva', async () => {
+    const e = env()
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: authW, body: { doc: '{"a":1}', version: 0 } }), e)
+    expect(r.status).toBe(200)
+    expect((await r.json()).version).toBe(1)
+    expect((await e.ORG.get('ABC'))?.doc).toBe('{"a":1}')
+  })
+  it('PUT con versione combaciante -> version+1', async () => {
+    const e = env({}, [orgRow({ version: 1 })])
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: authW, body: { doc: '{"b":2}', version: 1 } }), e)
+    expect(r.status).toBe(200)
+    expect((await r.json()).version).toBe(2)
+  })
+  it('PUT con versione stale -> 409 con la versione attuale', async () => {
+    const e = env({}, [orgRow({ version: 3 })])
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: authW, body: { doc: '{}', version: 1 } }), e)
+    expect(r.status).toBe(409)
+    expect((await r.json()).version).toBe(3)
+  })
+  it('PUT body non valido -> 400', async () => {
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: authW, body: { doc: 123 } }), env())
+    expect(r.status).toBe(400)
+  })
+  it('PUT senza WRITE_TOKEN -> 401', async () => {
+    const r = await handle(req('PUT', '/api/org/ABC', { body: { doc: '{}', version: 0 } }), env())
+    expect(r.status).toBe(401)
+  })
+  it('DELETE /api/org/:codice con token rimuove', async () => {
+    const e = env({}, [orgRow()])
+    const r = await handle(req('DELETE', '/api/org/ABC', { headers: authW }), e)
+    expect(r.status).toBe(200)
+    expect(await e.ORG.get('ABC')).toBeNull()
+  })
+  it('DELETE /api/org/:codice senza token -> 401', async () => {
+    const r = await handle(req('DELETE', '/api/org/ABC'), env({}, [orgRow()]))
     expect(r.status).toBe(401)
   })
 })

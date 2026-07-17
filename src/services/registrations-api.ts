@@ -1,5 +1,6 @@
 import type { Riepilogo, Iscrizione, GiocatoreIscrizione } from '../types/registrations'
 import type { PublicSnapshot } from '../types/public'
+import type { OrgRecord } from '../types/org'
 
 export interface RegistrationsClient {
   getRiepilogo(codice: string): Promise<Riepilogo>
@@ -10,10 +11,14 @@ export interface RegistrationsClient {
   pubblicaSnapshot(snap: PublicSnapshot): Promise<void>
   getSnapshot(codice: string): Promise<PublicSnapshot>
   rimuoviSnapshot(codice: string): Promise<void>
+  getOrg(codice: string): Promise<OrgRecord | null>
+  putOrg(codice: string, doc: string, version: number): Promise<{ conflitto: boolean; version: number }>
+  deleteOrg(codice: string): Promise<void>
 }
 
-export function creaClient(config: { baseUrl: string; token?: string }): RegistrationsClient {
+export function creaClient(config: { baseUrl: string; token?: string; writeToken?: string }): RegistrationsClient {
   const base = config.baseUrl.replace(/\/+$/, '')
+  const headerW = (): Record<string, string> => (config.writeToken ? { authorization: `Bearer ${config.writeToken}` } : {})
 
   async function call(method: string, path: string, opts: { body?: unknown; auth?: boolean } = {}): Promise<unknown> {
     const headers: Record<string, string> = {}
@@ -49,6 +54,31 @@ export function creaClient(config: { baseUrl: string; token?: string }): Registr
     getSnapshot: (codice) => call('GET', `/api/pubblico/${codice}`) as Promise<PublicSnapshot>,
     async rimuoviSnapshot(codice) {
       await call('DELETE', `/api/pubblico/${codice}`, { auth: true })
+    },
+    async getOrg(codice) {
+      const res = await fetch(`${base}/api/org/${codice}`, { headers: headerW() })
+      if (res.status === 404) return null
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? `Errore ${res.status}`)
+      return data as OrgRecord
+    },
+    async putOrg(codice, doc, version) {
+      const res = await fetch(`${base}/api/org/${codice}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', ...headerW() },
+        body: JSON.stringify({ doc, version }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string; version?: number }
+      if (res.status === 409) return { conflitto: true, version: data.version ?? version }
+      if (!res.ok) throw new Error(data.error ?? `Errore ${res.status}`)
+      return { conflitto: false, version: data.version ?? version }
+    },
+    async deleteOrg(codice) {
+      const res = await fetch(`${base}/api/org/${codice}`, { method: 'DELETE', headers: headerW() })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(data.error ?? `Errore ${res.status}`)
+      }
     },
   }
 }
