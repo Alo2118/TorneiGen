@@ -87,6 +87,17 @@ export async function tiraOrg(
   return { stato: 'aggiornato', versioneCloud: record.version }
 }
 
+export async function caricaDalCloud(
+  codice: string,
+  client: RegistrationsClient = getClient(),
+): Promise<string | null> {
+  const record = await client.getOrg(codice)
+  if (!record) return null
+  const doc = JSON.parse(record.doc) as OrgDoc
+  await applicaEScrivi(doc.tournament.id, doc, record.version)
+  return doc.tournament.id
+}
+
 export async function risolviConflittoUsaCloud(
   tournamentId: string,
   docCloud: OrgDoc,

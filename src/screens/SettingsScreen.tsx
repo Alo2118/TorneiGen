@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Field } from '../components/Field'
 import { Button } from '../components/Button'
-import { getSavedApiBaseUrl, getApiBaseUrl, getReadToken, setApiBaseUrl, setReadToken } from '../services/config'
+import { getSavedApiBaseUrl, getApiBaseUrl, getReadToken, setApiBaseUrl, setReadToken, getWriteToken, setWriteToken } from '../services/config'
 import { verificaConnessione } from '../services/verifica'
 
 export function SettingsScreen() {
@@ -11,6 +11,7 @@ export function SettingsScreen() {
   // come se fosse già stato scelto dall'utente.
   const [apiBaseUrl, setApiBaseUrlValue] = useState(() => getSavedApiBaseUrl())
   const [readToken, setReadTokenValue] = useState(() => getReadToken() ?? '')
+  const [writeToken, setWriteTokenValue] = useState(() => getWriteToken() ?? '')
   const [salvato, setSalvato] = useState(false)
   const [verifica, setVerifica] = useState<{ ok: boolean; messaggio: string } | null>(null)
   const [verificando, setVerificando] = useState(false)
@@ -20,6 +21,7 @@ export function SettingsScreen() {
     e.preventDefault()
     setApiBaseUrl(apiBaseUrl)
     setReadToken(readToken)
+    setWriteToken(writeToken)
     setSalvato(true)
     setVerifica(null)
   }
@@ -29,6 +31,7 @@ export function SettingsScreen() {
     // salvale prima, così il test riflette davvero ciò che verrà usato dall'app.
     setApiBaseUrl(apiBaseUrl)
     setReadToken(readToken)
+    setWriteToken(writeToken)
     setSalvato(true)
     setVerificando(true)
     setVerifica(null)
@@ -71,6 +74,19 @@ export function SettingsScreen() {
           autoComplete="off"
         />
         <p className="muted">La chiave privata del tuo deploy: si imposta una volta e serve solo a te per scaricare le iscrizioni; non condividerla.</p>
+
+        <Field
+          label="Token di scrittura"
+          type="password"
+          value={writeToken}
+          onChange={(e) => {
+            setWriteTokenValue(e.target.value)
+            setSalvato(false)
+            setVerifica(null)
+          }}
+          autoComplete="off"
+        />
+        <p className="muted">Serve a sincronizzare l'organizzazione del torneo tra i tuoi dispositivi. È più potente del token di lettura: tienilo privato.</p>
 
         <div className="setup-actions">
           {salvato && <span className="muted" role="status">Salvato</span>}

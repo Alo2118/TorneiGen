@@ -855,3 +855,8 @@ button.calendar-grid-match:hover { color: var(--sea); text-decoration: underline
 }
 .org-conflitto-testo { margin: 0 0 var(--space) 0; }
 .org-conflitto-azioni { display: flex; gap: var(--space); flex-wrap: wrap; }
+
+/* --- Fase 8b: onboarding secondo dispositivo (Home) --- */
+.home-head-azioni { display: flex; gap: var(--space); align-items: center; }
+.home-carica { border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space); margin-bottom: var(--space); }
+.home-carica-azioni { margin-top: var(--space); }
