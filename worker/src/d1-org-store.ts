@@ -5,8 +5,9 @@ import type { OrgRecord } from '../../src/types/org'
 interface D1Bound {
   first<T = unknown>(): Promise<T | null>
   run(): Promise<unknown>
+  all<T = unknown>(): Promise<{ results: T[] }>
 }
-interface D1Prepared {
+interface D1Prepared extends D1Bound {
   bind(...vals: unknown[]): D1Bound
 }
 export interface D1Like {

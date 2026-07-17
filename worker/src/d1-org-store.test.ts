@@ -12,12 +12,24 @@ function fakeD1(rowByCodice: Record<string, OrgRecord> = {}) {
     calls,
     prepare(sql: string) {
       return {
+        async first() {
+          throw new Error('fakeD1: first() senza bind() non supportato in questo test')
+        },
+        async run() {
+          throw new Error('fakeD1: run() senza bind() non supportato in questo test')
+        },
+        async all() {
+          throw new Error('fakeD1: all() senza bind() non supportato in questo test')
+        },
         bind(...binds: unknown[]) {
           calls.push({ sql, binds })
           return {
             async first<T>() {
               const codice = binds[0] as string
               return (rowByCodice[codice] as unknown as T) ?? null
+            },
+            async all<T>() {
+              return { results: [] as T[] }
             },
             async run() {
               if (/^insert into organizzazioni/i.test(sql)) {
