@@ -10,6 +10,8 @@ import { useToast } from '../components/Toast'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { SharePanel } from '../components/SharePanel'
+import { useOrgSync } from '../services/useOrgSync'
+import { ConflittoOrgBanner } from '../components/ConflittoOrgBanner'
 import type { Tipologia } from '../engine/types'
 
 const STATO_LABEL: Record<string, string> = {
@@ -34,6 +36,7 @@ export function RiepilogoScreen() {
   const teams = useLiveQuery(() => teamsOf(id ?? ''), [id], [])
   const matches = useLiveQuery(() => matchesOf(id ?? ''), [id], [])
   const toast = useToast()
+  const orgSync = useOrgSync(id)
   const [sincronizzando, setSincronizzando] = useState(false)
   const primoSync = useRef<string | null>(null)
 
@@ -104,6 +107,8 @@ export function RiepilogoScreen() {
           Data: {torneo.data} · Codice iscrizione: <strong>{torneo.codiceIscrizione}</strong>
         </p>
       </header>
+
+      <ConflittoOrgBanner sync={orgSync} />
 
       <div className="riepilogo-stats">
         <div className="riepilogo-stat">
