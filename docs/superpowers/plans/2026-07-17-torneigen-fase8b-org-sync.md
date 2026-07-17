@@ -441,21 +441,39 @@ export function sincronizzabile(): boolean {
   return true
 }
 
-export async function spingiOrg(
+// Helper privato: push del documento con una versione-base esplicita.
+async function eseguiPush(
   tournamentId: string,
-  client: RegistrationsClient = getClient(),
+  base: number,
+  client: RegistrationsClient,
 ): Promise<EsitoSync> {
   const t = await getTournament(tournamentId)
   if (!t) return { stato: 'errore' }
   try {
     const doc = await buildOrgDoc(tournamentId)
-    const esito = await client.putOrg(t.codiceIscrizione, JSON.stringify(doc), t.orgVersion ?? 0)
+    const esito = await client.putOrg(t.codiceIscrizione, JSON.stringify(doc), base)
     if (esito.conflitto) return { stato: 'conflitto', versioneCloud: esito.version }
     await saveTournament({ ...t, orgVersion: esito.version, orgPending: false })
     return { stato: 'sincronizzato', versioneCloud: esito.version }
   } catch {
     return { stato: 'errore' }
   }
+}
+
+// Helper privato: applica un documento cloud al locale (merge punteggi) e fissa la versione.
+export async function applicaEScrivi(tournamentId: string, doc: OrgDoc, versione: number): Promise<void> {
+  const [t, locali] = await Promise.all([getTournament(tournamentId), matchesOf(tournamentId)])
+  const stato = applyOrgDoc(doc, t, locali)
+  await scriviOrgLocale({ ...stato, tournament: { ...stato.tournament, orgVersion: versione, orgPending: false } })
+}
+
+export async function spingiOrg(
+  tournamentId: string,
+  client: RegistrationsClient = getClient(),
+): Promise<EsitoSync> {
+  const t = await getTournament(tournamentId)
+  if (!t) return { stato: 'errore' }
+  return eseguiPush(tournamentId, t.orgVersion ?? 0, client)
 }
 
 export async function tiraOrg(
@@ -482,9 +500,7 @@ export async function tiraOrg(
   const doc = JSON.parse(record.doc) as OrgDoc
   if (t.orgPending) return { stato: 'conflitto', versioneCloud: record.version, docCloud: doc }
 
-  const locali = await matchesOf(tournamentId)
-  const stato = applyOrgDoc(doc, t, locali)
-  await scriviOrgLocale({ ...stato, tournament: { ...stato.tournament, orgVersion: record.version, orgPending: false } })
+  await applicaEScrivi(tournamentId, doc, record.version)
   return { stato: 'aggiornato', versioneCloud: record.version }
 }
 
@@ -493,10 +509,7 @@ export async function risolviConflittoUsaCloud(
   docCloud: OrgDoc,
   versioneCloud: number,
 ): Promise<void> {
-  const t = await getTournament(tournamentId)
-  const locali = await matchesOf(tournamentId)
-  const stato = applyOrgDoc(docCloud, t, locali)
-  await scriviOrgLocale({ ...stato, tournament: { ...stato.tournament, orgVersion: versioneCloud, orgPending: false } })
+  await applicaEScrivi(tournamentId, docCloud, versioneCloud)
 }
 
 export async function risolviConflittoSovrascrivi(
@@ -504,17 +517,7 @@ export async function risolviConflittoSovrascrivi(
   versioneCloud: number,
   client: RegistrationsClient = getClient(),
 ): Promise<EsitoSync> {
-  const t = await getTournament(tournamentId)
-  if (!t) return { stato: 'errore' }
-  try {
-    const doc = await buildOrgDoc(tournamentId)
-    const esito = await client.putOrg(t.codiceIscrizione, JSON.stringify(doc), versioneCloud)
-    if (esito.conflitto) return { stato: 'conflitto', versioneCloud: esito.version }
-    await saveTournament({ ...t, orgVersion: esito.version, orgPending: false })
-    return { stato: 'sincronizzato', versioneCloud: esito.version }
-  } catch {
-    return { stato: 'errore' }
-  }
+  return eseguiPush(tournamentId, versioneCloud, client)
 }
 ```
 
@@ -1020,7 +1023,7 @@ Expected: FAIL (`caricaDalCloud` non esiste).
 
 - [ ] **Step 3: Implementa `caricaDalCloud`**
 
-In `src/services/orgSync.ts`, aggiungi (l'import di `getTournament, matchesOf` è già presente; assicurati che `applyOrgDoc, scriviOrgLocale` siano importati — lo sono):
+In `src/services/orgSync.ts`, aggiungi (riusa l'helper privato `applicaEScrivi` introdotto nel Task 2, che fa merge dei punteggi e fissa la versione; gestisce anche il caso "torneo già presente localmente" perché `applyOrgDoc` legge i match locali per `id`):
 
 ```ts
 export async function caricaDalCloud(
@@ -1030,11 +1033,8 @@ export async function caricaDalCloud(
   const record = await client.getOrg(codice)
   if (!record) return null
   const doc = JSON.parse(record.doc) as OrgDoc
-  const id = doc.tournament.id
-  const [locale, locali] = await Promise.all([getTournament(id), matchesOf(id)])
-  const stato = applyOrgDoc(doc, locale, locali)
-  await scriviOrgLocale({ ...stato, tournament: { ...stato.tournament, orgVersion: record.version, orgPending: false } })
-  return id
+  await applicaEScrivi(doc.tournament.id, doc, record.version)
+  return doc.tournament.id
 }
 ```
 
