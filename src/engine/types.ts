@@ -80,6 +80,8 @@ export interface Tournament {
   faseFinale?: 'diretta' | 'doppia'
   qualificatiPerGirone?: number | 'tutti'
   pubblicato?: boolean
+  orgVersion?: number
+  orgPending?: boolean
 }
 
 // --- Tipi risultato del motore (indipendenti dalla persistenza) ---
