@@ -25,14 +25,6 @@ export function setReadToken(v: string): void {
   localStorage.setItem('readToken', v.trim())
 }
 
-export function getWriteToken(): string | undefined {
-  return localStorage.getItem('writeToken') ?? undefined
-}
-
-export function setWriteToken(v: string): void {
-  localStorage.setItem('writeToken', v.trim())
-}
-
 export function getSessione(): string | undefined {
   return localStorage.getItem('sessione') ?? undefined
 }

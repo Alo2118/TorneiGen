@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listTournaments } from '../db/repositories'
 import { caricaDalCloud } from '../services/orgSync'
-import { getWriteToken } from '../services/config'
+import { getSessione } from '../services/config'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
 
@@ -17,8 +17,8 @@ export function HomeScreen() {
 
   async function handleCarica() {
     setErrore(null)
-    if (!getWriteToken()) {
-      setErrore('Imposta prima il token di scrittura nelle Impostazioni.')
+    if (!getSessione()) {
+      setErrore('Accedi prima per caricare un torneo dal cloud (Impostazioni → Accedi).')
       return
     }
     const c = codice.trim().toUpperCase()
