@@ -827,6 +827,9 @@ button.match-box:hover { border-color: var(--sea); }
 .calendar-grid-match-score { font-size: 0.85rem; color: var(--muted); }
 .calendar-grid-match-actions { display: flex; gap: var(--space); margin-top: 2px; }
 .calendar-grid-action { font-size: 0.75rem; padding: 2px 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); cursor: pointer; }
+.calendar-grid-match-drag { cursor: grab; touch-action: none; user-select: none; }
+.calendar-grid-match-dragging { opacity: 0.5; }
+.calendar-grid-cell-evidenza { outline: 2px dashed var(--sea); outline-offset: -2px; }
 
 /* --- Fase 8b: banner conflitto sync organizzazione --- */
 .org-conflitto {

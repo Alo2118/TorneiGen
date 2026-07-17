@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament, teamsOf, matchesOf } from '../db/repositories'
 import { programmaCalendario } from '../services/calendario'
+import { nuovaCollocazione } from '../engine/calendarGrid'
 import { db } from '../db/database'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
@@ -78,6 +79,13 @@ export function CalendarScreen() {
     chiudiSposta()
   }
 
+  async function handleSpostaSuCella(m: Match, cella: { data: string; orario: string; campo: string }) {
+    const { orario, campo } = nuovaCollocazione(cella.data, cella.orario, cella.campo)
+    await db.matches.update(m.id, { orario, campo })
+    notificaModificaOrg(m.tournamentId)
+    toast('Partita spostata')
+  }
+
   async function handleSalvaPunteggio(set: SetScore[]) {
     if (!matchInPunteggio || !torneo) return
     await salvaEProppaga(torneo.id, matchInPunteggio.id, set, torneo.regolePunteggio)
@@ -105,7 +113,7 @@ export function CalendarScreen() {
       {partiteProgrammate.length === 0 ? (
         <p className="empty">Nessuna partita programmata ancora.</p>
       ) : (
-        <CalendarGrid matches={matches} teamNames={teamNames} onPunteggio={(m) => setMatchInPunteggio(m)} onSposta={apriSposta} />
+        <CalendarGrid matches={matches} teamNames={teamNames} onPunteggio={(m) => setMatchInPunteggio(m)} onSposta={apriSposta} onSpostaSuCella={handleSpostaSuCella} />
       )}
 
       {inSpostamento && (
