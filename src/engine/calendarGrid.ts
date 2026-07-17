@@ -57,3 +57,7 @@ export function buildCalendarGrid(matches: Match[]): GiornataGriglia[] {
       return { data, campi, orari, celle }
     })
 }
+
+export function nuovaCollocazione(data: string, orario: string, campo: string): { orario: string; campo: string } {
+  return { orario: `${data}T${orario}`, campo: campo === CAMPO_VUOTO ? '' : campo }
+}
