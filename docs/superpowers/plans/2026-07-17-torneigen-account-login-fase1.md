@@ -557,7 +557,7 @@ Rimuovi l'helper `autorizzatoScrittura` se non più usato (il `WRITE_TOKEN` in `
 
 **Files:** Modify `worker/schema.sql`, `worker/src/d1-org-store.ts`, `worker/src/index.ts`, `worker/mock-server.mjs`, `worker/wrangler.toml`; Create `worker/src/d1-user-store.ts`, `worker/src/d1-societa-store.ts`.
 
-- [ ] **Step 1: Schema** — In `worker/schema.sql` aggiungi (dopo la tabella `organizzazioni`):
+- [ ] **Step 1: Schema** — In `worker/schema.sql` aggiungi (dopo la tabella `organizzazioni`) SOLO le due tabelle nuove. *(La colonna `societa_id` su `organizzazioni` — l'`ALTER TABLE organizzazioni ADD COLUMN societa_id TEXT;` — è GIÀ stata aggiunta nel fix del Task 5: NON riaggiungerla.)*
 ```sql
 CREATE TABLE IF NOT EXISTS societa (
   id        TEXT PRIMARY KEY,
@@ -576,14 +576,9 @@ CREATE TABLE IF NOT EXISTS utenti (
   societa_richiesta TEXT,
   creato_il         TEXT NOT NULL
 );
--- colonna aggiunta a organizzazioni (ignora l'errore "duplicate column" se già applicata)
-ALTER TABLE organizzazioni ADD COLUMN societa_id TEXT;
 ```
-(Nota nel report: l'`ALTER` va lanciato una sola volta; su ri-esecuzione D1 darà "duplicate column name" — è atteso.)
 
-- [ ] **Step 2: `d1-org-store.ts`** — aggiorna SELECT/INSERT per includere `societaId` (colonna `societa_id`):
-  - SELECT: `SELECT codice, doc, version, updatedAt, societa_id AS societaId FROM organizzazioni WHERE codice = ?`
-  - INSERT: colonne `(codice, doc, version, updatedAt, societa_id)` VALUES `(?,?,?,?,?)` con `ON CONFLICT(codice) DO UPDATE SET doc=excluded.doc, version=excluded.version, updatedAt=excluded.updatedAt, societa_id=excluded.societa_id`; bind `row.codice, row.doc, row.version, row.updatedAt, row.societaId ?? null`.
+- [ ] **Step 2: `d1-org-store.ts`** — GIÀ FATTO nel fix del Task 5 (SELECT/INSERT includono `societa_id AS societaId`). **Salta questo step.**
 
 - [ ] **Step 3: Adattatori D1** — Create `worker/src/d1-user-store.ts` (usa `D1Like` importato da `./d1-org-store`):
 ```ts
