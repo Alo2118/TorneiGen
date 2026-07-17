@@ -102,3 +102,26 @@ export async function risolviConflittoSovrascrivi(
 ): Promise<EsitoSync> {
   return eseguiPush(tournamentId, versioneCloud, client)
 }
+
+const DEBOUNCE_MS = 1500
+const timer = new Map<string, ReturnType<typeof setTimeout>>()
+
+async function marcaPending(tournamentId: string): Promise<void> {
+  const t = await getTournament(tournamentId)
+  if (t && !t.orgPending) await saveTournament({ ...t, orgPending: true })
+}
+
+/** Da chiamare dopo ogni modifica dell'ORGANIZZAZIONE (non dei punteggi). */
+export function notificaModificaOrg(tournamentId: string, client: RegistrationsClient = getClient()): void {
+  void marcaPending(tournamentId)
+  if (!sincronizzabile()) return
+  const esistente = timer.get(tournamentId)
+  if (esistente) clearTimeout(esistente)
+  timer.set(
+    tournamentId,
+    setTimeout(() => {
+      timer.delete(tournamentId)
+      void spingiOrg(tournamentId, client)
+    }, DEBOUNCE_MS),
+  )
+}
