@@ -75,11 +75,6 @@ function autorizzato(req: Request, env: Env): boolean {
   return !!m && m[1] === env.READ_TOKEN
 }
 
-function autorizzatoScrittura(req: Request, env: Env): boolean {
-  const m = (req.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i)
-  return !!m && m[1] === env.WRITE_TOKEN
-}
-
 async function sessione(req: Request, env: Env): Promise<SessioneUtente | null> {
   const t = estraiBearer(req)
   return t ? verificaJWT(t, env.AUTH_SECRET) : null
@@ -292,34 +287,42 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   }
 
   // GET /api/org/:codice  (organizzatore, privato)
-  if (req.method === 'GET' && p1 === 'org' && p2) {
-    if (!autorizzatoScrittura(req, env)) return json({ error: 'non autorizzato' }, 401)
+  if (req.method === 'GET' && p1 === 'org' && p2 && !p3) {
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
     const row = await env.ORG.get(p2)
     if (!row) return json({ error: 'non trovato' }, 404)
+    if (!(s.ruolo === 'admin' || !row.societaId || row.societaId === s.societaId)) return json({ error: 'vietato' }, 403)
     return json(row)
   }
 
   // PUT /api/org/:codice  (organizzatore, concorrenza ottimistica)
   if (req.method === 'PUT' && p1 === 'org' && p2 && !p3) {
-    if (!autorizzatoScrittura(req, env)) return json({ error: 'non autorizzato' }, 401)
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
+    if (!s.societaId && s.ruolo !== 'admin') return json({ error: 'nessuna società' }, 403)
     let b: { doc?: unknown; version?: unknown }
-    try {
-      b = (await req.json()) as { doc?: unknown; version?: unknown }
-    } catch {
-      return json({ error: 'JSON non valido' }, 400)
-    }
+    try { b = (await req.json()) as typeof b } catch { return json({ error: 'JSON non valido' }, 400) }
     if (typeof b.doc !== 'string' || typeof b.version !== 'number') return json({ error: 'dati incompleti' }, 400)
     const esistente = await env.ORG.get(p2)
+    if (esistente && !(s.ruolo === 'admin' || !esistente.societaId || esistente.societaId === s.societaId)) {
+      return json({ error: 'vietato' }, 403)
+    }
     const corrente = esistente?.version ?? 0
     if (b.version !== corrente) return json({ error: 'conflitto', version: corrente }, 409)
     const nuovaVersione = corrente + 1
-    await env.ORG.put({ codice: p2, doc: b.doc, version: nuovaVersione, updatedAt: new Date().toISOString() })
+    // claim: mantieni la società esistente, altrimenti assegna quella dell'utente
+    const societaId = esistente?.societaId ?? s.societaId ?? null
+    await env.ORG.put({ codice: p2, doc: b.doc, version: nuovaVersione, updatedAt: new Date().toISOString(), societaId })
     return json({ version: nuovaVersione })
   }
 
   // DELETE /api/org/:codice  (organizzatore)
   if (req.method === 'DELETE' && p1 === 'org' && p2 && !p3) {
-    if (!autorizzatoScrittura(req, env)) return json({ error: 'non autorizzato' }, 401)
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
+    const row = await env.ORG.get(p2)
+    if (row && !(s.ruolo === 'admin' || !row.societaId || row.societaId === s.societaId)) return json({ error: 'vietato' }, 403)
     await env.ORG.delete(p2)
     return json({ ok: true })
   }

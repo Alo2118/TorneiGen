@@ -30,7 +30,6 @@ function env(
 }
 const riepilogo = (over = {}) => JSON.stringify({ codice: 'ABC', nome: 'Coppa', tipologia: '2x2', formato: 'girone_italiana', chiuso: false, updatedAt: '', ...over })
 const auth = { authorization: `Bearer ${TOKEN}` }
-const authW = { authorization: `Bearer ${WTOKEN}` }
 const req = (method: string, path: string, opts: { body?: unknown; headers?: Record<string, string> } = {}) =>
   new Request('http://x' + path, {
     method,
@@ -205,53 +204,97 @@ describe('handle', () => {
   })
 
   const orgRow = (over: Partial<OrgRecord> = {}): OrgRecord =>
-    ({ codice: 'ABC', doc: '{"x":1}', version: 1, updatedAt: '', ...over })
+    ({ codice: 'ABC', doc: '{"x":1}', version: 1, updatedAt: '', societaId: 's1', ...over })
 
-  it('GET /api/org/:codice senza WRITE_TOKEN -> 401', async () => {
+  const tokenS1 = () => creaJWT({ sub: 'u-s1', email: 's1@x.it', ruolo: 'utente', societaId: 's1' }, AUTH_SECRET)
+  const tokenS2 = () => creaJWT({ sub: 'u-s2', email: 's2@x.it', ruolo: 'utente', societaId: 's2' }, AUTH_SECRET)
+  const tokenOrgAdmin = () => creaJWT({ sub: 'org-admin', email: ADMIN_EMAIL, ruolo: 'admin', societaId: null }, AUTH_SECRET)
+  const authS1 = async () => ({ authorization: `Bearer ${await tokenS1()}` })
+  const authS2 = async () => ({ authorization: `Bearer ${await tokenS2()}` })
+  const authOrgAdmin = async () => ({ authorization: `Bearer ${await tokenOrgAdmin()}` })
+
+  it('GET /api/org/:codice senza token -> 401', async () => {
     const r = await handle(req('GET', '/api/org/ABC'), env())
     expect(r.status).toBe(401)
   })
   it('GET /api/org/:codice inesistente (con token) -> 404', async () => {
-    const r = await handle(req('GET', '/api/org/NOPE', { headers: authW }), env())
+    const r = await handle(req('GET', '/api/org/NOPE', { headers: await authS1() }), env())
     expect(r.status).toBe(404)
   })
-  it('GET /api/org/:codice esistente -> 200 con doc e version', async () => {
-    const r = await handle(req('GET', '/api/org/ABC', { headers: authW }), env({}, [orgRow({ doc: '{"n":2}', version: 5 })]))
+  it('GET /api/org/:codice esistente -> 200 con doc e version (stessa società)', async () => {
+    const r = await handle(req('GET', '/api/org/ABC', { headers: await authS1() }), env({}, [orgRow({ doc: '{"n":2}', version: 5 })]))
     expect(r.status).toBe(200)
     const b = await r.json()
     expect(b.version).toBe(5)
     expect(b.doc).toBe('{"n":2}')
   })
-  it('PUT nuovo documento (version 0) -> 200 version 1 e salva', async () => {
+  it('GET /api/org/:codice di un\'altra società -> 403', async () => {
+    const r = await handle(req('GET', '/api/org/ABC', { headers: await authS2() }), env({}, [orgRow()]))
+    expect(r.status).toBe(403)
+  })
+  it('GET /api/org/:codice come admin -> 200 anche per società altrui', async () => {
+    const r = await handle(req('GET', '/api/org/ABC', { headers: await authOrgAdmin() }), env({}, [orgRow()]))
+    expect(r.status).toBe(200)
+  })
+  it('GET /api/org/:codice documento legacy senza società -> 200 per qualsiasi utente (grazia)', async () => {
+    const r = await handle(req('GET', '/api/org/ABC', { headers: await authS2() }), env({}, [orgRow({ societaId: null })]))
+    expect(r.status).toBe(200)
+  })
+  it('PUT nuovo documento (version 0) -> 200 version 1, salva e reclama la società', async () => {
     const e = env()
-    const r = await handle(req('PUT', '/api/org/ABC', { headers: authW, body: { doc: '{"a":1}', version: 0 } }), e)
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: '{"a":1}', version: 0 } }), e)
     expect(r.status).toBe(200)
     expect((await r.json()).version).toBe(1)
-    expect((await e.ORG.get('ABC'))?.doc).toBe('{"a":1}')
+    const salvato = await e.ORG.get('ABC')
+    expect(salvato?.doc).toBe('{"a":1}')
+    expect(salvato?.societaId).toBe('s1')
   })
-  it('PUT con versione combaciante -> version+1', async () => {
+  it('PUT con versione combaciante (stessa società) -> version+1', async () => {
     const e = env({}, [orgRow({ version: 1 })])
-    const r = await handle(req('PUT', '/api/org/ABC', { headers: authW, body: { doc: '{"b":2}', version: 1 } }), e)
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: '{"b":2}', version: 1 } }), e)
     expect(r.status).toBe(200)
     expect((await r.json()).version).toBe(2)
   })
+  it('PUT come utente di un\'altra società -> 403', async () => {
+    const e = env({}, [orgRow({ version: 1 })])
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS2(), body: { doc: '{}', version: 1 } }), e)
+    expect(r.status).toBe(403)
+  })
+  it('PUT su documento legacy senza società -> lo reclama per l\'utente', async () => {
+    const e = env({}, [orgRow({ societaId: null, version: 1 })])
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS2(), body: { doc: '{}', version: 1 } }), e)
+    expect(r.status).toBe(200)
+    expect((await e.ORG.get('ABC'))?.societaId).toBe('s2')
+  })
   it('PUT con versione stale -> 409 con la versione attuale', async () => {
     const e = env({}, [orgRow({ version: 3 })])
-    const r = await handle(req('PUT', '/api/org/ABC', { headers: authW, body: { doc: '{}', version: 1 } }), e)
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: '{}', version: 1 } }), e)
     expect(r.status).toBe(409)
     expect((await r.json()).version).toBe(3)
   })
   it('PUT body non valido -> 400', async () => {
-    const r = await handle(req('PUT', '/api/org/ABC', { headers: authW, body: { doc: 123 } }), env())
+    const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: 123 } }), env())
     expect(r.status).toBe(400)
   })
-  it('PUT senza WRITE_TOKEN -> 401', async () => {
+  it('PUT senza token -> 401', async () => {
     const r = await handle(req('PUT', '/api/org/ABC', { body: { doc: '{}', version: 0 } }), env())
     expect(r.status).toBe(401)
   })
-  it('DELETE /api/org/:codice con token rimuove', async () => {
+  it('DELETE /api/org/:codice con token della stessa società rimuove', async () => {
     const e = env({}, [orgRow()])
-    const r = await handle(req('DELETE', '/api/org/ABC', { headers: authW }), e)
+    const r = await handle(req('DELETE', '/api/org/ABC', { headers: await authS1() }), e)
+    expect(r.status).toBe(200)
+    expect(await e.ORG.get('ABC')).toBeNull()
+  })
+  it('DELETE /api/org/:codice come utente di un\'altra società -> 403', async () => {
+    const e = env({}, [orgRow()])
+    const r = await handle(req('DELETE', '/api/org/ABC', { headers: await authS2() }), e)
+    expect(r.status).toBe(403)
+    expect(await e.ORG.get('ABC')).not.toBeNull()
+  })
+  it('DELETE /api/org/:codice come admin rimuove anche società altrui', async () => {
+    const e = env({}, [orgRow()])
+    const r = await handle(req('DELETE', '/api/org/ABC', { headers: await authOrgAdmin() }), e)
     expect(r.status).toBe(200)
     expect(await e.ORG.get('ABC')).toBeNull()
   })

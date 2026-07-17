@@ -3,6 +3,7 @@ export interface OrgRecord {
   doc: string
   version: number
   updatedAt: string
+  societaId?: string | null
 }
 
 import type { Tournament, Team, Group, Match } from '../engine/types'
