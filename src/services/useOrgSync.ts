@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { OrgDoc } from '../types/org'
 import { tiraOrg, risolviConflittoUsaCloud, risolviConflittoSovrascrivi, sincronizzabile } from './orgSync'
 
@@ -14,13 +14,15 @@ export interface OrgSync {
 
 export function useOrgSync(tournamentId: string | undefined): OrgSync {
   const [conflitto, setConflitto] = useState<StatoConflitto | null>(null)
-  const fatto = useRef<string | null>(null)
 
   useEffect(() => {
     if (!tournamentId || !sincronizzabile()) return
-    if (fatto.current === tournamentId) return
-    fatto.current = tournamentId
     let annullato = false
+    // Niente ref di guardia: in StrictMode dev l'effetto viene invocato due
+    // volte (mount→cleanup→remount). La prima invocazione viene annullata
+    // dal proprio cleanup, la seconda ("vera") completa normalmente e
+    // aggiorna lo stato. tiraOrg è una GET idempotente, quindi eseguirla due
+    // volte in dev è innocuo; in produzione gira una sola volta.
     void tiraOrg(tournamentId).then((esito) => {
       if (annullato) return
       if (esito.stato === 'conflitto' && esito.docCloud && esito.versioneCloud !== undefined) {
@@ -39,8 +41,8 @@ export function useOrgSync(tournamentId: string | undefined): OrgSync {
   }
   async function risolviLocale(): Promise<void> {
     if (!tournamentId || !conflitto) return
-    await risolviConflittoSovrascrivi(tournamentId, conflitto.versioneCloud)
-    setConflitto(null)
+    const esito = await risolviConflittoSovrascrivi(tournamentId, conflitto.versioneCloud)
+    if (esito.stato === 'sincronizzato') setConflitto(null)
   }
   return { conflitto, risolviCloud, risolviLocale }
 }
