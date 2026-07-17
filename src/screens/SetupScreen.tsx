@@ -5,6 +5,7 @@ import { Field } from '../components/Field'
 import { Button } from '../components/Button'
 import { getTournament, saveTournament } from '../db/repositories'
 import { newId } from '../engine/id'
+import { notificaModificaOrg } from '../services/orgSync'
 import type { Formato, RegolePunteggio, Tipologia, Tournament } from '../engine/types'
 
 const QUALIFICATI_OPZIONI = [1, 2, 3, 4]
@@ -112,6 +113,7 @@ export function SetupScreen() {
       qualificatiPerGirone,
     }
     await saveTournament(torneo)
+    notificaModificaOrg(torneo.id)
     navigate(`/tornei/${tournamentId}/squadre`)
   }
 

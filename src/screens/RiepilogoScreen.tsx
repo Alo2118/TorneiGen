@@ -10,6 +10,9 @@ import { useToast } from '../components/Toast'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { SharePanel } from '../components/SharePanel'
+import { useOrgSync } from '../services/useOrgSync'
+import { notificaModificaOrg } from '../services/orgSync'
+import { ConflittoOrgBanner } from '../components/ConflittoOrgBanner'
 import type { Tipologia } from '../engine/types'
 
 const STATO_LABEL: Record<string, string> = {
@@ -34,6 +37,7 @@ export function RiepilogoScreen() {
   const teams = useLiveQuery(() => teamsOf(id ?? ''), [id], [])
   const matches = useLiveQuery(() => matchesOf(id ?? ''), [id], [])
   const toast = useToast()
+  const orgSync = useOrgSync(id)
   const [sincronizzando, setSincronizzando] = useState(false)
   const primoSync = useRef<string | null>(null)
 
@@ -51,6 +55,7 @@ export function RiepilogoScreen() {
       const nuove = nuoveIscrizioni(tutte, esistenti, tipologia)
       if (nuove.length > 0) {
         await db.teams.bulkPut(nuove.map((i) => iscrizioneATeam(i, tournamentId)))
+        notificaModificaOrg(tournamentId)
       }
       if (!annullato() && nuove.length > 0) toast(`${nuove.length} nuove iscrizioni`)
     } catch (err) {
@@ -88,6 +93,7 @@ export function RiepilogoScreen() {
 
   async function confermaTutte() {
     await db.teams.where({ tournamentId: id, stato: 'in_attesa' }).modify({ stato: 'confermata' })
+    if (id) notificaModificaOrg(id)
     toast('Squadre confermate')
   }
 
@@ -104,6 +110,8 @@ export function RiepilogoScreen() {
           Data: {torneo.data} · Codice iscrizione: <strong>{torneo.codiceIscrizione}</strong>
         </p>
       </header>
+
+      <ConflittoOrgBanner sync={orgSync} />
 
       <div className="riepilogo-stats">
         <div className="riepilogo-stat">
@@ -137,7 +145,7 @@ export function RiepilogoScreen() {
           variant="ghost"
           disabled={sincronizzando || !getReadToken()}
           onClick={() => {
-            if (torneo.codiceIscrizione) void sincronizzaIscrizioni(torneo.codiceIscrizione, id, () => false)
+            if (torneo.codiceIscrizione) void sincronizzaIscrizioni(torneo.codiceIscrizione, id, torneo.tipologia, () => false)
           }}
         >
           Aggiorna iscrizioni

@@ -7,6 +7,7 @@ import { salvaEProppaga } from '../services/saveResult'
 import { generaFaseFinale } from '../services/faseFinale'
 import { pubblicaSeAttivo } from '../services/pubblicazione'
 import { mappaEtichette } from '../services/teams'
+import { notificaModificaOrg } from '../services/orgSync'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/Button'
 import { MatchRow } from '../components/MatchRow'
@@ -114,6 +115,7 @@ export function BracketScreen() {
       const { groups: nuoviGruppi, matches: nuovePartite } = generaTorneo(torneo, confermate)
       await replaceGenerated(torneo.id, nuoviGruppi, nuovePartite)
       await saveTournament({ ...torneo, stato: 'in_corso' })
+      notificaModificaOrg(torneo.id)
       void pubblicaSeAttivo(torneo.id)
     } catch (e) {
       setErrore(e instanceof Error ? e.message : 'Errore durante la generazione')
@@ -135,6 +137,7 @@ export function BracketScreen() {
     setGenerandoFinale(true)
     try {
       await generaFaseFinale(id)
+      notificaModificaOrg(id)
       toast('Fase finale generata')
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Errore durante la generazione della fase finale', 'errore')
