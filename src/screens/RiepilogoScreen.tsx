@@ -11,6 +11,7 @@ import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { SharePanel } from '../components/SharePanel'
 import { useOrgSync } from '../services/useOrgSync'
+import { notificaModificaOrg } from '../services/orgSync'
 import { ConflittoOrgBanner } from '../components/ConflittoOrgBanner'
 import type { Tipologia } from '../engine/types'
 
@@ -54,6 +55,7 @@ export function RiepilogoScreen() {
       const nuove = nuoveIscrizioni(tutte, esistenti, tipologia)
       if (nuove.length > 0) {
         await db.teams.bulkPut(nuove.map((i) => iscrizioneATeam(i, tournamentId)))
+        notificaModificaOrg(tournamentId)
       }
       if (!annullato() && nuove.length > 0) toast(`${nuove.length} nuove iscrizioni`)
     } catch (err) {
@@ -91,6 +93,7 @@ export function RiepilogoScreen() {
 
   async function confermaTutte() {
     await db.teams.where({ tournamentId: id, stato: 'in_attesa' }).modify({ stato: 'confermata' })
+    if (id) notificaModificaOrg(id)
     toast('Squadre confermate')
   }
 

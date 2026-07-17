@@ -6,6 +6,7 @@ import { getTournament, teamsOf, saveTournament } from '../db/repositories'
 import { getClient, getReadToken } from '../services/config'
 import { nuoveIscrizioni, iscrizioneATeam } from '../services/import'
 import { etichettaIscrizione } from '../services/teams'
+import { notificaModificaOrg } from '../services/orgSync'
 import { Button } from '../components/Button'
 import type { Riepilogo, Iscrizione } from '../types/registrations'
 
@@ -64,8 +65,10 @@ export function RegistrationsAdminScreen() {
       setRiepilogo(salvato)
       if (!chiuso && torneo.stato === 'bozza') {
         await saveTournament({ ...torneo, stato: 'iscrizioni_aperte' })
+        notificaModificaOrg(torneo.id)
       } else if (chiuso && torneo.stato === 'iscrizioni_aperte') {
         await saveTournament({ ...torneo, stato: 'bozza' })
+        notificaModificaOrg(torneo.id)
       }
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore imprevisto')

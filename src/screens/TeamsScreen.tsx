@@ -9,6 +9,7 @@ import { db } from '../db/database'
 import { teamsOf, getTournament } from '../db/repositories'
 import { newId } from '../engine/id'
 import { numeroGiocatori, validaSquadra, etichettaSquadra } from '../services/teams'
+import { notificaModificaOrg } from '../services/orgSync'
 import type { Player, Team } from '../engine/types'
 
 function emptyPlayer(): Player {
@@ -66,15 +67,18 @@ export function TeamsScreen() {
   async function handleSeed(team: Team, raw: string) {
     const testaDiSerie = raw === '' ? undefined : Number(raw)
     await db.teams.put({ ...team, testaDiSerie })
+    if (id) notificaModificaOrg(id)
   }
 
   async function handleConfirm(teamId: string) {
     await db.teams.update(teamId, { stato: 'confermata' })
+    if (id) notificaModificaOrg(id)
   }
 
   async function handleRemove(teamId: string) {
     if (!window.confirm('Rimuovere questa squadra?')) return
     await db.teams.delete(teamId)
+    if (id) notificaModificaOrg(id)
     if (editingId === teamId) resetForm()
   }
 
@@ -96,6 +100,7 @@ export function TeamsScreen() {
       return
     }
     await db.teams.put(team)
+    if (id) notificaModificaOrg(id)
     resetForm()
   }
 

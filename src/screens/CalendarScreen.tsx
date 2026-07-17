@@ -9,6 +9,7 @@ import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
 import { CalendarGrid } from '../components/CalendarGrid'
 import { mappaEtichette } from '../services/teams'
+import { notificaModificaOrg } from '../services/orgSync'
 import type { Match, Team } from '../engine/types'
 
 function nomeSquadra(id: string | null, teamNames: Record<string, string>): string {
@@ -69,6 +70,7 @@ export function CalendarScreen() {
       return
     }
     await db.matches.update(inSpostamento.id, { orario: nuovoOrario, campo: nuovoCampo })
+    notificaModificaOrg(inSpostamento.tournamentId)
     toast('Partita spostata')
     chiudiSposta()
   }

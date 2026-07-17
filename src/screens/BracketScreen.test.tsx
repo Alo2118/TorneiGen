@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -7,6 +7,12 @@ import { db } from '../db/database'
 import { saveTournament } from '../db/repositories'
 import { BracketScreen } from './BracketScreen'
 import type { Tournament, Team } from '../engine/types'
+
+vi.mock('../services/orgSync', () => ({
+  notificaModificaOrg: vi.fn(),
+  sincronizzabile: () => false,
+}))
+import { notificaModificaOrg } from '../services/orgSync'
 
 const t: Tournament = {
   id: 't1', nome: 'Coppa', tipologia: '2x2', formato: 'girone_italiana', data: '2026-07-13',
@@ -258,5 +264,18 @@ describe('BracketScreen', () => {
       const tab = (await db.matches.where('tournamentId').equals('t1').toArray()).filter((m) => m.fase === 'tabellone')
       expect(tab.length).toBeGreaterThan(0)
     })
+  })
+
+  it('notifica la modifica organizzazione dopo la generazione', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /genera/i }))
+    await waitFor(() => expect(notificaModificaOrg).toHaveBeenCalled())
   })
 })
