@@ -11,6 +11,7 @@ import { RegistrationsAdminScreen } from '../screens/RegistrationsAdminScreen'
 import { SettingsScreen } from '../screens/SettingsScreen'
 import { RegistrationScreen } from '../screens/RegistrationScreen'
 import { PublicViewScreen } from '../screens/PublicViewScreen'
+import { AuthScreen } from '../screens/AuthScreen'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="tornei/:id/classifiche" element={<StandingsScreen />} />
         <Route path="tornei/:id/iscrizioni" element={<RegistrationsAdminScreen />} />
         <Route path="impostazioni" element={<SettingsScreen />} />
+        <Route path="accesso" element={<AuthScreen />} />
       </Route>
     </Routes>
   )
