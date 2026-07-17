@@ -1,7 +1,7 @@
 import type { Riepilogo, Iscrizione } from '../../src/types/registrations'
 import type { PublicSnapshot } from '../../src/types/public'
 import type { OrgRecord } from '../../src/types/org'
-import { hashPassword, verificaPassword, creaJWT, verificaJWT, estraiBearer, type SessioneUtente } from './auth'
+import { hashPassword, verificaPassword, verificaFittizia, creaJWT, verificaJWT, estraiBearer, type SessioneUtente } from './auth'
 
 export interface KV {
   get(key: string): Promise<string | null>
@@ -128,7 +128,13 @@ export async function handle(req: Request, env: Env): Promise<Response> {
     const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : ''
     const password = typeof b.password === 'string' ? b.password : ''
     const u = await env.USERS.perEmail(email)
-    if (!u || !(await verificaPassword(password, u.password_hash, u.salt, u.iterazioni))) {
+    if (!u) {
+      // Email sconosciuta: esegue comunque il PBKDF2 su valori fittizi per non rivelare,
+      // tramite il tempo di risposta, quali email sono registrate (anti-enumerazione).
+      await verificaFittizia(password)
+      return json({ error: 'credenziali non valide' }, 401)
+    }
+    if (!(await verificaPassword(password, u.password_hash, u.salt, u.iterazioni))) {
       return json({ error: 'credenziali non valide' }, 401)
     }
     if (!u.abilitato) return json({ error: 'in_attesa' }, 403)

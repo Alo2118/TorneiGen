@@ -54,6 +54,16 @@ export async function verificaPassword(password: string, hash: string, salt: str
   return confrontoCostante(derived, deb64(hash))
 }
 
+// Salt e hash fittizi (16 byte / 32 byte, nessun segreto reale) usati solo per equalizzare
+// il tempo di calcolo sul percorso "email sconosciuta" durante il login: senza questo, la
+// mancata esecuzione di PBKDF2 renderebbe l'assenza dell'utente rilevabile dai tempi di risposta.
+const SALT_FITTIZIO = 'MDEyMzQ1Njc4OWFiY2RlZg=='
+const HASH_FITTIZIO = 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
+
+export async function verificaFittizia(password: string): Promise<void> {
+  await verificaPassword(password, HASH_FITTIZIO, SALT_FITTIZIO, ITERAZIONI)
+}
+
 async function hmac(segreto: string, dati: string): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey('raw', enc.encode(segreto), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(dati))

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hashPassword, verificaPassword, creaJWT, verificaJWT, estraiBearer } from './auth'
+import { hashPassword, verificaPassword, verificaFittizia, creaJWT, verificaJWT, estraiBearer } from './auth'
 
 describe('password', () => {
   it('verifica corretta e rifiuta sbagliata', async () => {
@@ -10,6 +10,12 @@ describe('password', () => {
   it('salt diverso a ogni hash', async () => {
     const a = await hashPassword('x'); const b = await hashPassword('x')
     expect(a.salt).not.toEqual(b.salt)
+  })
+})
+
+describe('verificaFittizia', () => {
+  it('esegue il PBKDF2 su valori fittizi senza lanciare (equalizzatore di tempo)', async () => {
+    await expect(verificaFittizia('qualsiasi')).resolves.toBeUndefined()
   })
 })
 

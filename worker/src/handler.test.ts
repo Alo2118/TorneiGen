@@ -339,6 +339,32 @@ describe('handle', () => {
       expect(r.status).toBe(401)
     })
 
+    it('POST /api/auth/accesso con email inesistente -> 401 con lo stesso corpo della password errata (anti-enumerazione)', async () => {
+      const { hash, salt, iterazioni } = await hashPassword('password1')
+      const utente: UtenteRecord = {
+        id: '1', email: 'a@x.it', password_hash: hash, salt, iterazioni,
+        ruolo: 'utente', abilitato: 1, societa_id: null, societa_richiesta: null, creato_il: '',
+      }
+      const e = env(undefined, undefined, [utente])
+      const rSconosciuta = await handle(req('POST', '/api/auth/accesso', { body: { email: 'sconosciuta@x.it', password: 'password1' } }), e)
+      const rSbagliata = await handle(req('POST', '/api/auth/accesso', { body: { email: 'a@x.it', password: 'sbagliata' } }), e)
+      expect(rSconosciuta.status).toBe(401)
+      expect(rSbagliata.status).toBe(401)
+      const bSconosciuta = await rSconosciuta.json()
+      const bSbagliata = await rSbagliata.json()
+      expect(bSconosciuta).toEqual({ error: 'credenziali non valide' })
+      expect(bSconosciuta).toEqual(bSbagliata)
+    })
+
+    it('POST /api/auth/registrazione con ADMIN_EMAIL case-insensitive -> ruolo admin + token', async () => {
+      const e = env()
+      const r = await handle(req('POST', '/api/auth/registrazione', { body: { email: 'Admin@X.IT', password: 'password1' } }), e)
+      expect(r.status).toBe(200)
+      const b = await r.json()
+      expect(typeof b.token).toBe('string')
+      expect(b.utente).toEqual({ email: ADMIN_EMAIL, ruolo: 'admin', societaId: null })
+    })
+
     it('GET /api/auth/io con Bearer valido -> dati sessione', async () => {
       const e = env()
       const rReg = await handle(req('POST', '/api/auth/registrazione', { body: { email: ADMIN_EMAIL, password: 'password1' } }), e)
