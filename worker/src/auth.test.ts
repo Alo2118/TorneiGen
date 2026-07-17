@@ -34,6 +34,18 @@ describe('jwt', () => {
     const rotto = t.slice(0, -2) + (t.slice(-2) === 'aa' ? 'bb' : 'aa')
     expect(await verificaJWT(rotto, seg, 1_000_000)).toBeNull()
   })
+  it('token malformato (≠ 3 parti / base64 rotto) → null senza lanciare', async () => {
+    expect(await verificaJWT('a.b', seg, 1_000_000)).toBeNull()
+    expect(await verificaJWT('non-un-jwt', seg, 1_000_000)).toBeNull()
+    expect(await verificaJWT('@@@.@@@.@@@', seg, 1_000_000)).toBeNull()
+  })
+  it('token alg:none (nessuna confusione di algoritmo) → null', async () => {
+    // header {"alg":"none"} + payload valido + firma vuota: verifica ricalcola comunque l'HMAC → null
+    const b64url = (s: string) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    const header = b64url('{"alg":"none","typ":"JWT"}')
+    const body = b64url(JSON.stringify({ ...base, exp: 9_999_999_999 }))
+    expect(await verificaJWT(`${header}.${body}.`, seg, 1_000_000)).toBeNull()
+  })
 })
 
 describe('estraiBearer', () => {
