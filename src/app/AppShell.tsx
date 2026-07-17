@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useParams, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getTournament } from '../db/repositories'
 import { exportBackup } from '../db/backup'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
+import { utenteCorrente } from '../services/auth'
 
 const SEZIONI = [
   { to: '', label: 'Riepilogo', icon: '⌂' },
@@ -29,6 +31,17 @@ export function AppShell() {
   const { id } = useParams()
   const navigate = useNavigate()
   const torneo = useLiveQuery(() => (id ? getTournament(id) : undefined), [id])
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let cancellato = false
+    utenteCorrente().then((u) => {
+      if (!cancellato) setIsAdmin(u?.ruolo === 'admin')
+    })
+    return () => {
+      cancellato = true
+    }
+  }, [])
 
   async function handleExport() {
     if (!torneo) return
@@ -64,6 +77,12 @@ export function AppShell() {
         )}
 
         <div className="nav-footer">
+          {isAdmin && (
+            <NavLink to="/admin" className="nav-link">
+              <span className="nav-icon" aria-hidden="true">☑</span>
+              <span className="nav-label">Admin</span>
+            </NavLink>
+          )}
           <NavLink to="/impostazioni" className="nav-link">
             <span className="nav-icon" aria-hidden="true">⚙</span>
             <span className="nav-label">Impostazioni</span>
