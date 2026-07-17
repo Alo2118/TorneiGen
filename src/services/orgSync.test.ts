@@ -130,22 +130,22 @@ describe('tiraOrg', () => {
 
 describe('sincronizzabile', () => {
   afterEach(() => {
-    localStorage.removeItem('writeToken')
+    localStorage.removeItem('sessione')
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
   })
 
-  it('è true con token di scrittura impostato e online', () => {
-    localStorage.setItem('writeToken', 'wt')
+  it('è true con sessione impostata e online', () => {
+    localStorage.setItem('sessione', 'wt')
     expect(sincronizzabile()).toBe(true)
   })
 
-  it('è false senza token di scrittura', () => {
-    localStorage.removeItem('writeToken')
+  it('è false senza sessione', () => {
+    localStorage.removeItem('sessione')
     expect(sincronizzabile()).toBe(false)
   })
 
   it('è false se offline', () => {
-    localStorage.setItem('writeToken', 'wt')
+    localStorage.setItem('sessione', 'wt')
     Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
     expect(sincronizzabile()).toBe(false)
   })

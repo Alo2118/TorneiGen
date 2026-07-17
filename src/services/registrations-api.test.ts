@@ -54,13 +54,13 @@ describe('registrations-api', () => {
 })
 
 describe('client org', () => {
-  it('getOrg usa GET /api/org/:codice col write token e ritorna il record', async () => {
+  it('getOrg usa GET /api/org/:codice col Bearer di sessione e ritorna il record', async () => {
     const calls: { url: string; init?: RequestInit }[] = []
     vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
       calls.push({ url, init })
       return new Response(JSON.stringify({ codice: 'ABC', doc: '{}', version: 2, updatedAt: 't' }), { status: 200 })
     })
-    const client = creaClient({ baseUrl: 'http://x', writeToken: 'W' })
+    const client = creaClient({ baseUrl: 'http://x', sessione: 'W' })
     const r = await client.getOrg('ABC')
     expect(r).toEqual({ codice: 'ABC', doc: '{}', version: 2, updatedAt: 't' })
     expect(calls[0].url).toBe('http://x/api/org/ABC')
@@ -69,20 +69,92 @@ describe('client org', () => {
   })
   it('getOrg ritorna null sul 404', async () => {
     vi.stubGlobal('fetch', async () => new Response('{}', { status: 404 }))
-    const client = creaClient({ baseUrl: 'http://x', writeToken: 'W' })
+    const client = creaClient({ baseUrl: 'http://x', sessione: 'W' })
     expect(await client.getOrg('NOPE')).toBeNull()
     vi.unstubAllGlobals()
   })
   it('putOrg segnala il conflitto sul 409 con la versione attuale', async () => {
     vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ error: 'conflitto', version: 5 }), { status: 409 }))
-    const client = creaClient({ baseUrl: 'http://x', writeToken: 'W' })
+    const client = creaClient({ baseUrl: 'http://x', sessione: 'W' })
     expect(await client.putOrg('ABC', '{}', 1)).toEqual({ conflitto: true, version: 5 })
     vi.unstubAllGlobals()
   })
   it('putOrg ritorna la nuova versione sul 200', async () => {
     vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ version: 3 }), { status: 200 }))
-    const client = creaClient({ baseUrl: 'http://x', writeToken: 'W' })
+    const client = creaClient({ baseUrl: 'http://x', sessione: 'W' })
     expect(await client.putOrg('ABC', '{}', 2)).toEqual({ conflitto: false, version: 3 })
     vi.unstubAllGlobals()
+  })
+})
+
+describe('client auth', () => {
+  it('registrazione chiama POST /api/auth/registrazione con email/password/societa', async () => {
+    const f = mockFetch(200, { stato: 'in_attesa' })
+    vi.stubGlobal('fetch', f)
+    const r = await client().registrazione('a@b.it', 'segreto1', 'Società X')
+    expect(r).toEqual({ stato: 'in_attesa' })
+    expect(f).toHaveBeenCalledWith(
+      'http://api.test/api/auth/registrazione',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ email: 'a@b.it', password: 'segreto1', societa: 'Società X' }) }),
+    )
+  })
+
+  it('accesso chiama POST /api/auth/accesso e ritorna token+utente', async () => {
+    const utente = { email: 'a@b.it', ruolo: 'utente' as const, societaId: null }
+    vi.stubGlobal('fetch', mockFetch(200, { token: 'tok123', utente }))
+    const r = await client().accesso('a@b.it', 'segreto1')
+    expect(r).toEqual({ token: 'tok123', utente })
+  })
+
+  it('io chiama GET /api/auth/io con Bearer di sessione', async () => {
+    const utente = { email: 'a@b.it', ruolo: 'admin' as const, societaId: null }
+    const f = mockFetch(200, utente)
+    vi.stubGlobal('fetch', f)
+    const r = await creaClient({ baseUrl: 'http://api.test', sessione: 'S' }).io()
+    expect(r).toEqual(utente)
+    const opts = (f.mock.calls[0] as unknown[])?.[1] as RequestInit
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer S')
+    expect(f).toHaveBeenCalledWith('http://api.test/api/auth/io', expect.objectContaining({ method: 'GET' }))
+  })
+})
+
+describe('client admin', () => {
+  const adminClient = () => creaClient({ baseUrl: 'http://api.test', sessione: 'S' })
+
+  it('elencoUtenti chiama GET /api/admin/utenti e ritorna l\'array', async () => {
+    const utenti = [{ id: '1', email: 'a@b.it', ruolo: 'utente', abilitato: 0, societaId: null, societaRichiesta: 'X' }]
+    vi.stubGlobal('fetch', mockFetch(200, { utenti }))
+    const r = await adminClient().elencoUtenti()
+    expect(r).toEqual(utenti)
+  })
+
+  it('elencoSocieta chiama GET /api/admin/societa e ritorna l\'array', async () => {
+    const societa = [{ id: '1', nome: 'X', creato_il: 't' }]
+    vi.stubGlobal('fetch', mockFetch(200, { societa }))
+    const r = await adminClient().elencoSocieta()
+    expect(r).toEqual(societa)
+  })
+
+  it('creaSocieta chiama POST /api/admin/societa con {nome} e Bearer sessione', async () => {
+    const f = mockFetch(200, { id: '1', nome: 'X', creato_il: 't' })
+    vi.stubGlobal('fetch', f)
+    const r = await adminClient().creaSocieta('X')
+    expect(r).toEqual({ id: '1', nome: 'X', creato_il: 't' })
+    const opts = (f.mock.calls[0] as unknown[])?.[1] as RequestInit
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer S')
+    expect(f).toHaveBeenCalledWith(
+      'http://api.test/api/admin/societa',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ nome: 'X' }) }),
+    )
+  })
+
+  it('abilitaUtente chiama POST /api/admin/utenti/:id/abilita con {societaId}', async () => {
+    const f = mockFetch(200, { ok: true })
+    vi.stubGlobal('fetch', f)
+    await adminClient().abilitaUtente('u1', 'soc1')
+    expect(f).toHaveBeenCalledWith(
+      'http://api.test/api/admin/utenti/u1/abilita',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ societaId: 'soc1' }) }),
+    )
   })
 })
