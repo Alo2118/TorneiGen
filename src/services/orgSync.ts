@@ -93,7 +93,12 @@ export async function caricaDalCloud(
 ): Promise<string | null> {
   const record = await client.getOrg(codice)
   if (!record) return null
-  const doc = JSON.parse(record.doc) as OrgDoc
+  let doc: OrgDoc
+  try {
+    doc = JSON.parse(record.doc) as OrgDoc
+  } catch {
+    return null
+  }
   await applicaEScrivi(doc.tournament.id, doc, record.version)
   return doc.tournament.id
 }

@@ -19,10 +19,12 @@ export function useOrgSync(tournamentId: string | undefined): OrgSync {
     if (!tournamentId || !sincronizzabile()) return
     let annullato = false
     // Niente ref di guardia: in StrictMode dev l'effetto viene invocato due
-    // volte (mount→cleanup→remount). La prima invocazione viene annullata
-    // dal proprio cleanup, la seconda ("vera") completa normalmente e
-    // aggiorna lo stato. tiraOrg è una GET idempotente, quindi eseguirla due
-    // volte in dev è innocuo; in produzione gira una sola volta.
+    // volte (mount→cleanup→remount), quindi tiraOrg può eseguire i suoi
+    // effetti collaterali (scrittura IndexedDB via applicaEScrivi, ed
+    // eventuale push via spingiOrg) due volte: innocuo, nel peggiore dei casi
+    // un pull o un primo push ridondante che va in 409. La flag `annullato`
+    // garantisce solo che ad aggiornare lo stato React sia l'invocazione
+    // sopravvissuta (la seconda). In produzione l'effetto gira una sola volta.
     void tiraOrg(tournamentId).then((esito) => {
       if (annullato) return
       if (esito.stato === 'conflitto' && esito.docCloud && esito.versioneCloud !== undefined) {

@@ -137,6 +137,7 @@ export function BracketScreen() {
     setGenerandoFinale(true)
     try {
       await generaFaseFinale(id)
+      notificaModificaOrg(id)
       toast('Fase finale generata')
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Errore durante la generazione della fase finale', 'errore')

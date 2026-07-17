@@ -266,6 +266,24 @@ describe('BracketScreen', () => {
     })
   })
 
+  it('gironi+eliminazione: notifica la modifica organizzazione dopo la generazione della fase finale', async () => {
+    await db.tournaments.update('t1', { formato: 'gironi_eliminazione', faseFinale: 'diretta', qualificatiPerGirone: 'tutti' })
+    await db.groups.bulkPut([{ id: 'g1', tournamentId: 't1', nome: 'A', teamIds: ['A', 'B'] }])
+    await db.matches.bulkPut([
+      { id: 'gm', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 21, puntiB: 10 }], vincitoreId: 'A', stato: 'conclusa' },
+    ])
+    render(
+      <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>
+        <ToastProvider>
+          <Routes><Route path="/tornei/:id/tabellone" element={<BracketScreen />} /></Routes>
+          <Toaster />
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /genera fase finale/i }))
+    await waitFor(() => expect(notificaModificaOrg).toHaveBeenCalled())
+  })
+
   it('notifica la modifica organizzazione dopo la generazione', async () => {
     render(
       <MemoryRouter initialEntries={['/tornei/t1/tabellone']}>

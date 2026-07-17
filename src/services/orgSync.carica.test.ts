@@ -34,4 +34,10 @@ describe('caricaDalCloud', () => {
     const id = await caricaDalCloud('INESISTENTE', fakeClient(null))
     expect(id).toBeNull()
   })
+
+  it('ritorna null (senza lanciare) se il doc cloud è JSON corrotto', async () => {
+    const record: OrgRecord = { codice: 'CLOUD1', doc: 'nonjson{', version: 2, updatedAt: 'x' }
+    const id = await caricaDalCloud('CLOUD1', fakeClient(record))
+    expect(id).toBeNull()
+  })
 })
