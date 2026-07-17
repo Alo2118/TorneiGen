@@ -9,6 +9,11 @@ function m(id: string, orario: string, campo: string, a: string, b: string): Mat
 const names = { a: 'Rossi', b: 'Bianchi', c: 'Verdi', d: 'Neri' }
 const matches = [m('1', '2026-07-20T09:00', '1', 'a', 'b'), m('2', '2026-07-20T09:30', '2', 'c', 'd')]
 
+// jsdom non implementa elementFromPoint: stub minimo per poterlo spiare (vi.spyOn) nei test di drag
+if (!document.elementFromPoint) {
+  document.elementFromPoint = () => null
+}
+
 describe('CalendarGrid', () => {
   it('rende le intestazioni dei campi e la colonna degli orari', () => {
     render(<CalendarGrid matches={matches} teamNames={names} />)
@@ -58,5 +63,34 @@ describe('CalendarGrid', () => {
     render(<CalendarGrid matches={matches} teamNames={{ a: 'Alfa' }} onPunteggio={() => {}} onSposta={() => {}} />)
     expect(screen.queryByRole('button', { name: 'Punteggio' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sposta' })).toBeInTheDocument()
+  })
+
+  it('il drop su una cella diversa chiama onSpostaSuCella con la cella di destinazione', () => {
+    const onSpostaSuCella = vi.fn()
+    const { container } = render(<CalendarGrid matches={matches} teamNames={names} onSpostaSuCella={onSpostaSuCella} />)
+    const nomi = screen.getByText('Rossi — Bianchi')
+    const cellaDestinazione = container.querySelector('[data-orario="09:30"][data-campo="2"]') as HTMLElement
+    expect(cellaDestinazione).not.toBeNull()
+    const spy = vi.spyOn(document, 'elementFromPoint').mockReturnValue(cellaDestinazione)
+    fireEvent.pointerDown(nomi, { clientX: 0, clientY: 0, button: 0 })
+    fireEvent.pointerMove(window, { clientX: 20, clientY: 0 })
+    fireEvent.pointerUp(window, { clientX: 20, clientY: 0 })
+    spy.mockRestore()
+    expect(onSpostaSuCella).toHaveBeenCalledTimes(1)
+    expect(onSpostaSuCella).toHaveBeenCalledWith(matches[0], { data: '2026-07-20', orario: '09:30', campo: '2' })
+  })
+
+  it('il drop sulla stessa cella di origine non chiama onSpostaSuCella (no-op)', () => {
+    const onSpostaSuCella = vi.fn()
+    const { container } = render(<CalendarGrid matches={matches} teamNames={names} onSpostaSuCella={onSpostaSuCella} />)
+    const nomi = screen.getByText('Rossi — Bianchi')
+    const cellaOrigine = container.querySelector('[data-orario="09:00"][data-campo="1"]') as HTMLElement
+    expect(cellaOrigine).not.toBeNull()
+    const spy = vi.spyOn(document, 'elementFromPoint').mockReturnValue(cellaOrigine)
+    fireEvent.pointerDown(nomi, { clientX: 0, clientY: 0, button: 0 })
+    fireEvent.pointerMove(window, { clientX: 20, clientY: 0 })
+    fireEvent.pointerUp(window, { clientX: 20, clientY: 0 })
+    spy.mockRestore()
+    expect(onSpostaSuCella).not.toHaveBeenCalled()
   })
 })
