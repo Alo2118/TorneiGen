@@ -421,36 +421,17 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   align-items: center;
   gap: calc(var(--space) * 2);
 }
-.score-control-team { display: flex; align-items: center; gap: calc(var(--space) * 1.25); }
-.score-control-value {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 600;
-  min-width: 1.6ch;
-  text-align: center;
-  color: var(--ink);
-}
 .score-control-sep { font-family: var(--font-display); font-size: 1.5rem; color: var(--muted); }
-.score-control-stepper {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  font-family: var(--font-display);
+.score-control-input {
+  width: 3.5rem;
+  text-align: center;
   font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1;
+  padding: var(--space);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
   color: var(--ink);
-  cursor: pointer;
-  transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
 }
-.score-control-stepper:hover:not(:disabled) { border-color: var(--sea); background: var(--paper); }
-.score-control-stepper:disabled { opacity: .35; cursor: not-allowed; }
 .score-control-actions { display: flex; justify-content: flex-end; gap: var(--space); }
 
 /* --- Modal (editor punteggio) --- */
@@ -841,9 +822,14 @@ button.match-box:hover { border-color: var(--sea); }
 .calendar-grid-cell-empty { color: var(--muted); text-align: center; }
 .calendar-grid-cell-collisione { background: color-mix(in srgb, var(--danger) 8%, transparent); }
 .calendar-grid-avviso { color: var(--danger); margin-right: 4px; }
-.calendar-grid-match { display: block; background: none; border: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; }
-button.calendar-grid-match { cursor: pointer; }
-button.calendar-grid-match:hover { color: var(--sea); text-decoration: underline; }
+.calendar-grid-match { display: flex; flex-direction: column; gap: 2px; }
+.calendar-grid-match-teams { font-size: 0.9rem; }
+.calendar-grid-match-score { font-size: 0.85rem; color: var(--muted); }
+.calendar-grid-match-actions { display: flex; gap: var(--space); margin-top: 2px; }
+.calendar-grid-action { font-size: 0.75rem; padding: 2px 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); cursor: pointer; }
+.calendar-grid-match-drag { cursor: grab; touch-action: none; user-select: none; }
+.calendar-grid-match-dragging { opacity: 0.5; }
+.calendar-grid-cell-evidenza { outline: 2px dashed var(--sea); outline-offset: -2px; }
 
 /* --- Fase 8b: banner conflitto sync organizzazione --- */
 .org-conflitto {

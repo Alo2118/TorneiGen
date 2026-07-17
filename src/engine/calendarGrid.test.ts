@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildCalendarGrid, CAMPO_VUOTO } from './calendarGrid'
+import { buildCalendarGrid, nuovaCollocazione, CAMPO_VUOTO } from './calendarGrid'
 import type { Match } from './types'
 
 function m(p: Partial<Match> & { id: string }): Match {
@@ -56,5 +56,14 @@ describe('buildCalendarGrid', () => {
     ])
     const cella = g[0].celle.find((x) => x.orario === '09:00' && x.campo === '1')!
     expect(cella.partite.map((p) => p.id)).toEqual(['1', '2'])
+  })
+})
+
+describe('nuovaCollocazione', () => {
+  it('compone orario giorno+ora e tiene il campo', () => {
+    expect(nuovaCollocazione('2026-07-20', '19:00', '2')).toEqual({ orario: '2026-07-20T19:00', campo: '2' })
+  })
+  it('mappa la colonna "Da definire" a campo vuoto', () => {
+    expect(nuovaCollocazione('2026-07-20', '19:00', CAMPO_VUOTO)).toEqual({ orario: '2026-07-20T19:00', campo: '' })
   })
 })
