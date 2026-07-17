@@ -75,7 +75,12 @@ export async function tiraOrg(
   }
   if (record.version < versioneLocale) return spingiOrg(tournamentId, client)
 
-  const doc = JSON.parse(record.doc) as OrgDoc
+  let doc: OrgDoc
+  try {
+    doc = JSON.parse(record.doc) as OrgDoc
+  } catch {
+    return { stato: 'errore' }
+  }
   if (t.orgPending) return { stato: 'conflitto', versioneCloud: record.version, docCloud: doc }
 
   await applicaEScrivi(tournamentId, doc, record.version)

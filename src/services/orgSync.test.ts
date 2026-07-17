@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { db } from '../db/database'
 import { saveTournament, getTournament, matchesOf } from '../db/repositories'
-import { spingiOrg, tiraOrg, risolviConflittoUsaCloud, risolviConflittoSovrascrivi } from './orgSync'
+import { spingiOrg, tiraOrg, risolviConflittoUsaCloud, risolviConflittoSovrascrivi, sincronizzabile } from './orgSync'
 import { buildOrgDoc } from './orgDoc'
 import type { RegistrationsClient } from './registrations-api'
 import type { OrgRecord } from '../types/org'
@@ -99,6 +99,55 @@ describe('tiraOrg', () => {
     const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(doc), version: 4, updatedAt: 'x' }
     const esito = await tiraOrg('t1', fakeClient({ getOrg: async () => record }))
     expect(esito.stato).toBe('inpari')
+  })
+
+  it('se le versioni combaciano MA c\'è pending, ripusha', async () => {
+    await saveTournament({ ...torneo, orgVersion: 4, orgPending: true })
+    const doc = await buildOrgDoc('t1')
+    const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(doc), version: 4, updatedAt: 'x' }
+    const putOrg = vi.fn(async () => ({ conflitto: false, version: 5 }))
+    const esito = await tiraOrg('t1', fakeClient({ getOrg: async () => record, putOrg }))
+    expect(putOrg).toHaveBeenCalled()
+    expect(esito.stato).toBe('sincronizzato')
+  })
+
+  it('se il locale è avanti rispetto al cloud, ripusha', async () => {
+    await saveTournament({ ...torneo, orgVersion: 5, orgPending: false })
+    const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify({}), version: 2, updatedAt: 'x' }
+    const putOrg = vi.fn(async () => ({ conflitto: false, version: 6 }))
+    const esito = await tiraOrg('t1', fakeClient({ getOrg: async () => record, putOrg }))
+    expect(putOrg).toHaveBeenCalled()
+    expect(esito.stato).toBe('sincronizzato')
+  })
+
+  it('se il doc cloud non è JSON valido, restituisce errore senza lanciare', async () => {
+    await saveTournament({ ...torneo, orgVersion: 1, orgPending: false })
+    const record: OrgRecord = { codice: 'ABC123', doc: 'non-json{', version: 4, updatedAt: 'x' }
+    const esito = await tiraOrg('t1', fakeClient({ getOrg: async () => record }))
+    expect(esito.stato).toBe('errore')
+  })
+})
+
+describe('sincronizzabile', () => {
+  afterEach(() => {
+    localStorage.removeItem('writeToken')
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+  })
+
+  it('è true con token di scrittura impostato e online', () => {
+    localStorage.setItem('writeToken', 'wt')
+    expect(sincronizzabile()).toBe(true)
+  })
+
+  it('è false senza token di scrittura', () => {
+    localStorage.removeItem('writeToken')
+    expect(sincronizzabile()).toBe(false)
+  })
+
+  it('è false se offline', () => {
+    localStorage.setItem('writeToken', 'wt')
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+    expect(sincronizzabile()).toBe(false)
   })
 })
 
