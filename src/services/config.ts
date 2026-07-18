@@ -25,14 +25,18 @@ export function setReadToken(v: string): void {
   localStorage.setItem('readToken', v.trim())
 }
 
-export function getWriteToken(): string | undefined {
-  return localStorage.getItem('writeToken') ?? undefined
+export function getSessione(): string | undefined {
+  return localStorage.getItem('sessione') ?? undefined
 }
 
-export function setWriteToken(v: string): void {
-  localStorage.setItem('writeToken', v.trim())
+export function setSessione(v: string): void {
+  localStorage.setItem('sessione', v)
+}
+
+export function clearSessione(): void {
+  localStorage.removeItem('sessione')
 }
 
 export function getClient(): RegistrationsClient {
-  return creaClient({ baseUrl: getApiBaseUrl(), token: getReadToken(), writeToken: getWriteToken() })
+  return creaClient({ baseUrl: getApiBaseUrl(), token: getReadToken(), sessione: getSessione() })
 }

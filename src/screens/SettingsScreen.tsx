@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { Field } from '../components/Field'
 import { Button } from '../components/Button'
-import { getSavedApiBaseUrl, getApiBaseUrl, getReadToken, setApiBaseUrl, setReadToken, getWriteToken, setWriteToken } from '../services/config'
+import { getSavedApiBaseUrl, getApiBaseUrl, getReadToken, setApiBaseUrl, setReadToken } from '../services/config'
 import { verificaConnessione } from '../services/verifica'
+import { utenteCorrente, esci, type Utente } from '../services/auth'
 
 export function SettingsScreen() {
   // Il valore mostrato è solo quello salvato esplicitamente: getApiBaseUrl()
@@ -11,17 +13,36 @@ export function SettingsScreen() {
   // come se fosse già stato scelto dall'utente.
   const [apiBaseUrl, setApiBaseUrlValue] = useState(() => getSavedApiBaseUrl())
   const [readToken, setReadTokenValue] = useState(() => getReadToken() ?? '')
-  const [writeToken, setWriteTokenValue] = useState(() => getWriteToken() ?? '')
   const [salvato, setSalvato] = useState(false)
   const [verifica, setVerifica] = useState<{ ok: boolean; messaggio: string } | null>(null)
   const [verificando, setVerificando] = useState(false)
+  const [utente, setUtente] = useState<Utente | null>(null)
+  const [caricandoUtente, setCaricandoUtente] = useState(true)
   const placeholderUrl = getApiBaseUrl()
+
+  useEffect(() => {
+    let attivo = true
+    utenteCorrente()
+      .then((u) => {
+        if (attivo) setUtente(u)
+      })
+      .finally(() => {
+        if (attivo) setCaricandoUtente(false)
+      })
+    return () => {
+      attivo = false
+    }
+  }, [])
+
+  function handleEsci() {
+    esci()
+    setUtente(null)
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setApiBaseUrl(apiBaseUrl)
     setReadToken(readToken)
-    setWriteToken(writeToken)
     setSalvato(true)
     setVerifica(null)
   }
@@ -31,7 +52,6 @@ export function SettingsScreen() {
     // salvale prima, così il test riflette davvero ciò che verrà usato dall'app.
     setApiBaseUrl(apiBaseUrl)
     setReadToken(readToken)
-    setWriteToken(writeToken)
     setSalvato(true)
     setVerificando(true)
     setVerifica(null)
@@ -48,6 +68,27 @@ export function SettingsScreen() {
       <header className="setup-head">
         <h1>Impostazioni</h1>
       </header>
+
+      <div className="setup-form">
+        {!caricandoUtente && (
+          utente ? (
+            <div className="setup-actions">
+              <span className="muted">
+                Accesso come {utente.email} ({utente.ruolo})
+              </span>
+              <Button type="button" variant="ghost" onClick={handleEsci}>
+                Esci
+              </Button>
+            </div>
+          ) : (
+            <div className="setup-actions">
+              <Link to="/accesso" className="btn btn-ghost">
+                Accedi o registrati
+              </Link>
+            </div>
+          )
+        )}
+      </div>
 
       <form className="setup-form" onSubmit={handleSubmit}>
         <Field
@@ -74,19 +115,6 @@ export function SettingsScreen() {
           autoComplete="off"
         />
         <p className="muted">La chiave privata del tuo deploy: si imposta una volta e serve solo a te per scaricare le iscrizioni; non condividerla.</p>
-
-        <Field
-          label="Token di scrittura"
-          type="password"
-          value={writeToken}
-          onChange={(e) => {
-            setWriteTokenValue(e.target.value)
-            setSalvato(false)
-            setVerifica(null)
-          }}
-          autoComplete="off"
-        />
-        <p className="muted">Serve a sincronizzare l'organizzazione del torneo tra i tuoi dispositivi. È più potente del token di lettura: tienilo privato.</p>
 
         <div className="setup-actions">
           {salvato && <span className="muted" role="status">Salvato</span>}

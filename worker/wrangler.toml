@@ -17,3 +17,8 @@ id = "b829e5cefba14ce4bc75776f4fc30847"
 binding = "DB"
 database_name = "torneigen-org"
 database_id = "25a6d584-53b8-491e-8562-45251fcee7cc"
+
+# Email dell'admin abilitato di default (bypassa l'approvazione manuale).
+# AUTH_SECRET (HMAC per i JWT di sessione) e' un secret: `wrangler secret put AUTH_SECRET`.
+[vars]
+ADMIN_EMAIL = "nicola.hdr@gmail.com"

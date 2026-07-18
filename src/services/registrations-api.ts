@@ -2,6 +2,38 @@ import type { Riepilogo, Iscrizione, GiocatoreIscrizione } from '../types/regist
 import type { PublicSnapshot } from '../types/public'
 import type { OrgRecord } from '../types/org'
 
+export interface UtenteSessione {
+  email: string
+  ruolo: 'utente' | 'admin'
+  societaId: string | null
+}
+
+export interface EsitoRegistrazione {
+  stato?: 'in_attesa'
+  token?: string
+  utente?: UtenteSessione
+}
+
+export interface EsitoAccesso {
+  token: string
+  utente: UtenteSessione
+}
+
+export interface UtenteAmministrato {
+  id: string
+  email: string
+  ruolo: 'utente' | 'admin'
+  abilitato: 0 | 1
+  societaId: string | null
+  societaRichiesta: string | null
+}
+
+export interface Societa {
+  id: string
+  nome: string
+  creato_il: string
+}
+
 export interface RegistrationsClient {
   getRiepilogo(codice: string): Promise<Riepilogo>
   pubblicaRiepilogo(r: Riepilogo): Promise<Riepilogo>
@@ -14,16 +46,24 @@ export interface RegistrationsClient {
   getOrg(codice: string): Promise<OrgRecord | null>
   putOrg(codice: string, doc: string, version: number): Promise<{ conflitto: boolean; version: number }>
   deleteOrg(codice: string): Promise<void>
+  registrazione(email: string, password: string, societa?: string): Promise<EsitoRegistrazione>
+  accesso(email: string, password: string): Promise<EsitoAccesso>
+  io(): Promise<UtenteSessione>
+  elencoUtenti(): Promise<UtenteAmministrato[]>
+  elencoSocieta(): Promise<Societa[]>
+  creaSocieta(nome: string): Promise<Societa>
+  abilitaUtente(id: string, societaId: string): Promise<void>
 }
 
-export function creaClient(config: { baseUrl: string; token?: string; writeToken?: string }): RegistrationsClient {
+export function creaClient(config: { baseUrl: string; token?: string; sessione?: string }): RegistrationsClient {
   const base = config.baseUrl.replace(/\/+$/, '')
-  const headerW = (): Record<string, string> => (config.writeToken ? { authorization: `Bearer ${config.writeToken}` } : {})
+  const headerW = (): Record<string, string> => (config.sessione ? { authorization: `Bearer ${config.sessione}` } : {})
 
-  async function call(method: string, path: string, opts: { body?: unknown; auth?: boolean } = {}): Promise<unknown> {
+  async function call(method: string, path: string, opts: { body?: unknown; auth?: boolean; sessione?: boolean } = {}): Promise<unknown> {
     const headers: Record<string, string> = {}
     if (opts.body !== undefined) headers['content-type'] = 'application/json'
     if (opts.auth && config.token) headers.authorization = `Bearer ${config.token}`
+    if (opts.sessione) Object.assign(headers, headerW())
     const res = await fetch(base + path, {
       method,
       headers,
@@ -72,6 +112,22 @@ export function creaClient(config: { baseUrl: string; token?: string; writeToken
       if (res.status === 409) return { conflitto: true, version: data.version ?? version }
       if (!res.ok) throw new Error(data.error ?? `Errore ${res.status}`)
       return { conflitto: false, version: data.version ?? version }
+    },
+    registrazione: (email, password, societa) =>
+      call('POST', '/api/auth/registrazione', { body: { email, password, societa } }) as Promise<EsitoRegistrazione>,
+    accesso: (email, password) => call('POST', '/api/auth/accesso', { body: { email, password } }) as Promise<EsitoAccesso>,
+    io: () => call('GET', '/api/auth/io', { sessione: true }) as Promise<UtenteSessione>,
+    async elencoUtenti() {
+      const d = (await call('GET', '/api/admin/utenti', { sessione: true })) as { utenti: UtenteAmministrato[] }
+      return d.utenti
+    },
+    async elencoSocieta() {
+      const d = (await call('GET', '/api/admin/societa', { sessione: true })) as { societa: Societa[] }
+      return d.societa
+    },
+    creaSocieta: (nome) => call('POST', '/api/admin/societa', { body: { nome }, sessione: true }) as Promise<Societa>,
+    async abilitaUtente(id, societaId) {
+      await call('POST', `/api/admin/utenti/${id}/abilita`, { body: { societaId }, sessione: true })
     },
     async deleteOrg(codice) {
       const res = await fetch(`${base}/api/org/${codice}`, { method: 'DELETE', headers: headerW() })

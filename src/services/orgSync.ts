@@ -1,6 +1,6 @@
 import type { RegistrationsClient } from './registrations-api'
 import type { OrgDoc } from '../types/org'
-import { getClient, getWriteToken } from './config'
+import { getClient, getSessione } from './config'
 import { getTournament, matchesOf, saveTournament } from '../db/repositories'
 import { buildOrgDoc, applyOrgDoc, scriviOrgLocale } from './orgDoc'
 
@@ -12,10 +12,10 @@ export interface EsitoSync {
   docCloud?: OrgDoc
 }
 
-/** La sync è attiva solo se online e con token di scrittura impostato (local-first). */
+/** La sync è attiva solo se online e con una sessione utente impostata (local-first). */
 export function sincronizzabile(): boolean {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return false
-  if (!getWriteToken()) return false
+  if (!getSessione()) return false
   return true
 }
 

@@ -2,10 +2,21 @@ import { createServer } from 'node:http'
 import { handle } from './src/handler.ts'
 import { fakeKV } from './src/fake-kv.ts'
 import { fakeOrgStore } from './src/fake-org-store.ts'
+import { fakeUserStore } from './src/fake-user-store.ts'
+import { fakeSocietaStore } from './src/fake-societa-store.ts'
 
 // Nota: eseguire con un runner che supporta TS (es. `node --experimental-strip-types`
 // su Node 22+, oppure `npx tsx worker/mock-server.mjs`). Vedi lo script npm.
-const env = { KV: fakeKV(), READ_TOKEN: process.env.READ_TOKEN || 'dev-token', WRITE_TOKEN: process.env.WRITE_TOKEN || 'dev-write', ORG: fakeOrgStore() }
+const env = {
+  KV: fakeKV(),
+  READ_TOKEN: process.env.READ_TOKEN || 'dev-token',
+  WRITE_TOKEN: process.env.WRITE_TOKEN || 'dev-write',
+  ORG: fakeOrgStore(),
+  USERS: fakeUserStore(),
+  SOCIETA: fakeSocietaStore(),
+  AUTH_SECRET: process.env.AUTH_SECRET || 'dev-secret',
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@dev',
+}
 
 const server = createServer(async (nreq, nres) => {
   const chunks = []

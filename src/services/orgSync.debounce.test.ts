@@ -17,7 +17,7 @@ function fakeClient(putOrg: RegistrationsClient['putOrg']): RegistrationsClient 
 beforeEach(async () => {
   await Promise.all([db.tournaments.clear(), db.matches.clear()])
   await saveTournament(torneo)
-  // Nota: il writeToken (che rende sincronizzabile() true) va impostato dai singoli
+  // Nota: la sessione (che rende sincronizzabile() true) va impostato dai singoli
   // test che ne hanno bisogno, per evitare di schedulare timer reali fuori controllo.
 })
 afterEach(() => {
@@ -27,7 +27,7 @@ afterEach(() => {
 
 describe('notificaModificaOrg', () => {
   it('marca orgPending anche a sync spenta (senza push)', async () => {
-    // Nessun writeToken: sincronizzabile() è false, quindi nessun timer viene schedulato.
+    // Nessuna sessione: sincronizzabile() è false, quindi nessun timer viene schedulato.
     const putOrg = vi.fn(async () => ({ conflitto: false, version: 1 }))
     notificaModificaOrg('t1', fakeClient(putOrg))
     await vi.waitFor(async () => {
@@ -38,7 +38,7 @@ describe('notificaModificaOrg', () => {
   })
 
   it('marca orgPending quando la sync è attiva', async () => {
-    localStorage.setItem('writeToken', 'wt') // rende sincronizzabile() true (jsdom: navigator.onLine = true)
+    localStorage.setItem('sessione', 'wt') // rende sincronizzabile() true (jsdom: navigator.onLine = true)
     // Solo setTimeout/clearTimeout sono finti: fake-indexeddb usa setImmediate
     // internamente e deve continuare a girare con i timer reali.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
@@ -55,7 +55,7 @@ describe('notificaModificaOrg', () => {
   })
 
   it('coalizza più chiamate ravvicinate in un solo push', async () => {
-    localStorage.setItem('writeToken', 'wt') // rende sincronizzabile() true (jsdom: navigator.onLine = true)
+    localStorage.setItem('sessione', 'wt') // rende sincronizzabile() true (jsdom: navigator.onLine = true)
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const putOrg = vi.fn(async () => ({ conflitto: false, version: 1 }))
     const client = fakeClient(putOrg)
