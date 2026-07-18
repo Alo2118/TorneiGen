@@ -6,7 +6,9 @@ export interface SessioneUtente {
   exp: number
 }
 
-const ITERAZIONI = 150000
+// Cloudflare Workers limita PBKDF2 a 100.000 iterazioni: oltre, crypto.subtle
+// lancia in produzione (in Node/test il limite non c'è). 100k = massimo consentito.
+const ITERAZIONI = 100000
 const enc = new TextEncoder()
 
 function b64(bytes: Uint8Array): string {
