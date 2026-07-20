@@ -77,4 +77,19 @@ describe('SharePanel', () => {
     expect(screen.getByRole('button', { name: /pubblica/i })).toBeTruthy()
     expect(screen.queryByRole('link', { name: /accedi/i })).not.toBeInTheDocument()
   })
+
+  it('torneo pubblicato senza sessione: nasconde Interrompi pubblicazione e mostra invito Accedi', () => {
+    getSessione.mockReturnValue(undefined)
+    renderPanel({ ...base, pubblicato: true })
+    expect(screen.queryByRole('button', { name: /interrompi pubblicazione/i })).not.toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /accedi/i })
+    expect(link).toBeTruthy()
+    expect(link.getAttribute('href')).toBe('/accesso')
+  })
+
+  it('torneo pubblicato con sessione: mostra il bottone Interrompi pubblicazione', () => {
+    getSessione.mockReturnValue('jwt-finto')
+    renderPanel({ ...base, pubblicato: true })
+    expect(screen.getByRole('button', { name: /interrompi pubblicazione/i })).toBeTruthy()
+  })
 })

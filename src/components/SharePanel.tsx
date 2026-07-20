@@ -88,8 +88,13 @@ export function SharePanel({ tournament }: Props) {
       <div className="share-actions">
         <Button type="button" variant="ghost" onClick={copiaLink}>Copia link</Button>
         <Button type="button" variant="ghost" onClick={condividi}>Condividi</Button>
-        <Button type="button" variant="ghost" onClick={handleInterrompi} disabled={inCorso}>Interrompi pubblicazione</Button>
+        {sessione && (
+          <Button type="button" variant="ghost" onClick={handleInterrompi} disabled={inCorso}>Interrompi pubblicazione</Button>
+        )}
       </div>
+      {!sessione && (
+        <p className="muted">Accedi per gestire la pubblicazione. <Link to="/accesso">Accedi</Link></p>
+      )}
       <QRCode value={link} />
     </section>
   )

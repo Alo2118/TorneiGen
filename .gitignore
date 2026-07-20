@@ -25,3 +25,7 @@ dist-ssr
 
 # Superpowers workflow scratch (not part of the shipped project)
 .superpowers/
+
+# File di lavoro locali (seed con PII reali, screenshot) — non versionare
+carica-*.js
+screenshot-simulazione/
