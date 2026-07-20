@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { pubblica, interrompiPubblicazione } from '../services/pubblicazione'
 import { getSessione } from '../services/config'
 import { QRCode } from './QRCode'
@@ -14,6 +15,7 @@ export function SharePanel({ tournament }: Props) {
   const toast = useToast()
   const [inCorso, setInCorso] = useState(false)
   const link = `${window.location.origin}/pubblico/${tournament.codiceIscrizione}`
+  const sessione = getSessione()
 
   async function handlePubblica() {
     if (!getSessione()) {
@@ -69,7 +71,11 @@ export function SharePanel({ tournament }: Props) {
       <section className="share-panel">
         <h2>Condivisione pubblica</h2>
         <p className="muted">Pubblica il tabellone in sola lettura: i giocatori lo vedranno sul telefono col link. Si aggiorna da solo a ogni risultato.</p>
-        <Button type="button" onClick={handlePubblica} disabled={inCorso}>Pubblica</Button>
+        {sessione ? (
+          <Button type="button" onClick={handlePubblica} disabled={inCorso}>Pubblica</Button>
+        ) : (
+          <p className="muted">Accedi per pubblicare il tabellone. <Link to="/accesso">Accedi</Link></p>
+        )}
       </section>
     )
   }
