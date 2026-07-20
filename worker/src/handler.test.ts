@@ -7,7 +7,6 @@ import { fakeSocietaStore } from './fake-societa-store'
 import { hashPassword, creaJWT } from './auth'
 import type { OrgRecord } from '../../src/types/org'
 
-const TOKEN = 'segreto'
 const WTOKEN = 'scrivi'
 const AUTH_SECRET = 'seg-test'
 const ADMIN_EMAIL = 'admin@x.it'
@@ -19,7 +18,6 @@ function env(
 ): Env {
   return {
     KV: fakeKV(seed),
-    READ_TOKEN: TOKEN,
     WRITE_TOKEN: WTOKEN,
     ORG: fakeOrgStore(orgSeed),
     USERS: fakeUserStore(userSeed),
@@ -29,7 +27,12 @@ function env(
   }
 }
 const riepilogo = (over = {}) => JSON.stringify({ codice: 'ABC', nome: 'Coppa', tipologia: '2x2', formato: 'girone_italiana', chiuso: false, updatedAt: '', ...over })
-const auth = { authorization: `Bearer ${TOKEN}` }
+const tokenSoc = (societaId: string) =>
+  creaJWT({ sub: `u-${societaId}`, email: `${societaId}@x.it`, ruolo: 'utente', societaId }, AUTH_SECRET)
+const authSoc = async (societaId = 's1') => ({ authorization: `Bearer ${await tokenSoc(societaId)}` })
+const authAdminSess = async () => ({
+  authorization: `Bearer ${await creaJWT({ sub: 'a', email: ADMIN_EMAIL, ruolo: 'admin', societaId: null }, AUTH_SECRET)}`,
+})
 const req = (method: string, path: string, opts: { body?: unknown; headers?: Record<string, string> } = {}) =>
   new Request('http://x' + path, {
     method,
@@ -51,7 +54,7 @@ describe('handle', () => {
 
   it('POST /api/torneo con token pubblica il riepilogo', async () => {
     const e = env()
-    const r = await handle(req('POST', '/api/torneo', { headers: auth, body: { codice: 'ABC', nome: 'Coppa', tipologia: '2x2', formato: 'girone_italiana' } }), e)
+    const r = await handle(req('POST', '/api/torneo', { headers: await authSoc(), body: { codice: 'ABC', nome: 'Coppa', tipologia: '2x2', formato: 'girone_italiana' } }), e)
     expect(r.status).toBe(200)
     expect(await e.KV.get('torneo:ABC')).toContain('Coppa')
   })
@@ -129,15 +132,15 @@ describe('handle', () => {
   })
 
   it('GET iscrizioni con token elenca le iscrizioni', async () => {
-    const e = env({ 'torneo:ABC': riepilogo(), 'iscr:ABC:1': JSON.stringify({ id: '1', codice: 'ABC', nomeSquadra: 'S', giocatori: [], createdAt: '' }) })
-    const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: auth }), e)
+    const e = env({ 'owner:ABC': 's1', 'torneo:ABC': riepilogo(), 'iscr:ABC:1': JSON.stringify({ id: '1', codice: 'ABC', nomeSquadra: 'S', giocatori: [], createdAt: '' }) })
+    const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: await authSoc('s1') }), e)
     expect(r.status).toBe(200)
     expect((await r.json()).iscrizioni).toHaveLength(1)
   })
 
   it('DELETE iscrizione con token la rimuove', async () => {
-    const e = env({ 'iscr:ABC:1': JSON.stringify({ id: '1' }) })
-    const r = await handle(req('DELETE', '/api/iscrizioni/ABC/1', { headers: auth }), e)
+    const e = env({ 'owner:ABC': 's1', 'iscr:ABC:1': JSON.stringify({ id: '1' }) })
+    const r = await handle(req('DELETE', '/api/iscrizioni/ABC/1', { headers: await authSoc('s1') }), e)
     expect(r.status).toBe(200)
     expect(await e.KV.get('iscr:ABC:1')).toBeNull()
   })
@@ -154,8 +157,8 @@ describe('handle', () => {
     expect((await r.json()).error).toBe('JSON non valido')
   })
 
-  it('GET /api/iscrizioni/:codice con token sbagliato -> 401', async () => {
-    const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: { authorization: 'Bearer sbagliato' } }), env({ 'torneo:ABC': riepilogo() }))
+  it('GET /api/iscrizioni/:codice con Bearer non valido -> 401', async () => {
+    const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: { authorization: 'Bearer non-valido' } }), env({ 'torneo:ABC': riepilogo() }))
     expect(r.status).toBe(401)
     expect((await r.json()).error).toBe('non autorizzato')
   })
@@ -170,13 +173,13 @@ describe('handle', () => {
 
   it('POST /api/pubblico/:codice con token salva lo snapshot in KV', async () => {
     const e = env()
-    const r = await handle(req('POST', '/api/pubblico/ABC', { headers: auth, body: { codice: 'ABC', nome: 'Coppa', tipologia: '2x2', regolePunteggio: {}, teams: [], groups: [], matches: [] } }), e)
+    const r = await handle(req('POST', '/api/pubblico/ABC', { headers: await authSoc('s1'), body: { codice: 'ABC', nome: 'Coppa', tipologia: '2x2', regolePunteggio: {}, teams: [], groups: [], matches: [] } }), e)
     expect(r.status).toBe(200)
     expect(await e.KV.get('pubblico:ABC')).toContain('Coppa')
   })
 
   it('POST /api/pubblico/:codice con dati incompleti -> 400', async () => {
-    const r = await handle(req('POST', '/api/pubblico/ABC', { headers: auth, body: { codice: 'ABC' } }), env())
+    const r = await handle(req('POST', '/api/pubblico/ABC', { headers: await authSoc('s1'), body: { codice: 'ABC' } }), env())
     expect(r.status).toBe(400)
   })
 
@@ -192,8 +195,8 @@ describe('handle', () => {
   })
 
   it('DELETE /api/pubblico/:codice con token rimuove lo snapshot', async () => {
-    const e = env({ 'pubblico:ABC': snapshot() })
-    const r = await handle(req('DELETE', '/api/pubblico/ABC', { headers: auth }), e)
+    const e = env({ 'owner:ABC': 's1', 'pubblico:ABC': snapshot() })
+    const r = await handle(req('DELETE', '/api/pubblico/ABC', { headers: await authSoc('s1') }), e)
     expect(r.status).toBe(200)
     expect(await e.KV.get('pubblico:ABC')).toBeNull()
   })
@@ -301,6 +304,61 @@ describe('handle', () => {
   it('DELETE /api/org/:codice senza token -> 401', async () => {
     const r = await handle(req('DELETE', '/api/org/ABC'), env({}, [orgRow()]))
     expect(r.status).toBe(401)
+  })
+
+  describe('pubblicazione via sessione (scoping società)', () => {
+    it('POST /api/torneo senza sessione -> 401', async () => {
+      const r = await handle(req('POST', '/api/torneo', { body: { codice: 'ABC', nome: 'C', tipologia: '2x2' } }), env())
+      expect(r.status).toBe(401)
+    })
+
+    it('POST /api/torneo con sessione pubblica e reclama owner per la società', async () => {
+      const e = env()
+      const r = await handle(req('POST', '/api/torneo', { headers: await authSoc('s1'), body: { codice: 'ABC', nome: 'Coppa', tipologia: '2x2', formato: 'girone_italiana' } }), e)
+      expect(r.status).toBe(200)
+      expect(await e.KV.get('owner:ABC')).toBe('s1')
+    })
+
+    it('GET iscrizioni della propria società -> 200', async () => {
+      const e = env({ 'owner:ABC': 's1', 'torneo:ABC': riepilogo() })
+      const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: await authSoc('s1') }), e)
+      expect(r.status).toBe(200)
+    })
+
+    it('GET iscrizioni di un torneo di un\'altra società -> 403', async () => {
+      const e = env({ 'owner:ABC': 's1', 'torneo:ABC': riepilogo() })
+      const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: await authSoc('s2') }), e)
+      expect(r.status).toBe(403)
+    })
+
+    it('GET iscrizioni come admin -> 200 anche per società altrui', async () => {
+      const e = env({ 'owner:ABC': 's1', 'torneo:ABC': riepilogo() })
+      const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: await authAdminSess() }), e)
+      expect(r.status).toBe(200)
+    })
+
+    it('torneo legacy senza owner: prima operazione consentita (grazia)', async () => {
+      const e = env({ 'torneo:ABC': riepilogo() })
+      const r = await handle(req('GET', '/api/iscrizioni/ABC', { headers: await authSoc('s2') }), e)
+      expect(r.status).toBe(200)
+    })
+
+    it('POST /api/pubblico reclama owner; poi altra società -> 403', async () => {
+      const e = env()
+      const rPub = await handle(req('POST', '/api/pubblico/ABC', { headers: await authSoc('s1'), body: { codice: 'ABC', nome: 'Coppa', tipologia: '2x2', regolePunteggio: {}, teams: [], groups: [], matches: [] } }), e)
+      expect(rPub.status).toBe(200)
+      expect(await e.KV.get('owner:ABC')).toBe('s1')
+      const rAltra = await handle(req('DELETE', '/api/pubblico/ABC', { headers: await authSoc('s2') }), e)
+      expect(rAltra.status).toBe(403)
+      expect(await e.KV.get('pubblico:ABC')).not.toBeNull()
+    })
+
+    it('DELETE iscrizione della propria società -> 200 e rimuove', async () => {
+      const e = env({ 'owner:ABC': 's1', 'iscr:ABC:1': JSON.stringify({ id: '1' }) })
+      const r = await handle(req('DELETE', '/api/iscrizioni/ABC/1', { headers: await authSoc('s1') }), e)
+      expect(r.status).toBe(200)
+      expect(await e.KV.get('iscr:ABC:1')).toBeNull()
+    })
   })
 
   describe('auth', () => {
@@ -425,6 +483,50 @@ describe('handle', () => {
     it('GET /api/auth/io con token invalido -> 401', async () => {
       const r = await handle(req('GET', '/api/auth/io', { headers: { authorization: 'Bearer invalido' } }), env())
       expect(r.status).toBe(401)
+    })
+  })
+
+  describe('AUTH_SECRET mancante', () => {
+    // Con AUTH_SECRET vuoto, creaJWT/verificaJWT lanciano una DataError opaca (error 1101 su
+    // Cloudflare). Le rotte che usano le sessioni devono invece rispondere 503 con un messaggio chiaro.
+    const utenteAbilitato = async (): Promise<UtenteRecord> => {
+      const { hash, salt, iterazioni } = await hashPassword('password1')
+      return {
+        id: '1', email: 'a@x.it', password_hash: hash, salt, iterazioni,
+        ruolo: 'admin', abilitato: 1, societa_id: null, societa_richiesta: null, creato_il: '',
+      }
+    }
+
+    it('POST /api/auth/accesso con AUTH_SECRET vuoto -> 503 (non crash)', async () => {
+      const e = { ...env(undefined, undefined, [await utenteAbilitato()]), AUTH_SECRET: '' }
+      const r = await handle(req('POST', '/api/auth/accesso', { body: { email: 'a@x.it', password: 'password1' } }), e)
+      expect(r.status).toBe(503)
+      expect((await r.json()).error).toMatch(/AUTH_SECRET/)
+      expect(r.headers.get('access-control-allow-origin')).toBe('*')
+    })
+
+    it('POST /api/auth/registrazione (admin) con AUTH_SECRET vuoto -> 503', async () => {
+      const e = { ...env(), AUTH_SECRET: '' }
+      const r = await handle(req('POST', '/api/auth/registrazione', { body: { email: ADMIN_EMAIL, password: 'password1' } }), e)
+      expect(r.status).toBe(503)
+    })
+
+    it('GET /api/auth/io con AUTH_SECRET vuoto -> 503', async () => {
+      const e = { ...env(), AUTH_SECRET: '' }
+      const r = await handle(req('GET', '/api/auth/io', { headers: { authorization: 'Bearer x.y.z' } }), e)
+      expect(r.status).toBe(503)
+    })
+
+    it('GET /api/org/:codice con AUTH_SECRET vuoto -> 503', async () => {
+      const e = { ...env({}, [orgRow()]), AUTH_SECRET: '' }
+      const r = await handle(req('GET', '/api/org/ABC', { headers: { authorization: 'Bearer x.y.z' } }), e)
+      expect(r.status).toBe(503)
+    })
+
+    it('rotta pubblica (GET /api/torneo/:codice) resta funzionante con AUTH_SECRET vuoto', async () => {
+      const e = { ...env({ 'torneo:ABC': riepilogo() }), AUTH_SECRET: '' }
+      const r = await handle(req('GET', '/api/torneo/ABC'), e)
+      expect(r.status).toBe(200)
     })
   })
 
