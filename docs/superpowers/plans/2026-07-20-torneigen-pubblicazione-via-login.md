@@ -299,89 +299,144 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-### Task 3: Rimozione del plumbing morto di `READ_TOKEN` (config, pubblicazione, Impostazioni)
+### Task 3: Migrare tutti i gate da `READ_TOKEN` alla sessione + rimuovere il plumbing morto
+
+Il gate storico `!getReadToken()` significava «pubblicazione configurata?». Ora significa «loggato?» → diventa `!getSessione()`. `getReadToken` è usato in **7 file** (verificato via grep): tutti vanno migrati **prima** di rimuovere le funzioni da `config.ts`, altrimenti il build si rompe.
 
 **Files:**
-- Modify: `src/services/pubblicazione.ts:54` (gate `getReadToken`→`getSessione`; import)
-- Modify: `src/services/config.ts` (rimozione `getReadToken`/`setReadToken`)
+- Modify: `src/services/pubblicazione.ts` (gate `getReadToken`→`getSessione`)
+- Modify: `src/services/verifica.ts` (verifica connessione via sessione, nuovi messaggi)
+- Modify: `src/components/SharePanel.tsx` (gate `handlePubblica` su sessione)
+- Modify: `src/screens/RegistrationsAdminScreen.tsx` (`tokenMancante`→`sessioneMancante`)
+- Modify: `src/screens/RiepilogoScreen.tsx` (gate su `sincronizzaIscrizioni` e sul bottone "Aggiorna iscrizioni")
 - Modify: `src/screens/SettingsScreen.tsx` (rimozione campo "Token di lettura")
-- Test: `src/services/config.test.ts` (rimozione test del token)
+- Modify: `src/services/config.ts` (rimozione `getReadToken`/`setReadToken`)
+- Test: `src/services/config.test.ts`, `src/services/verifica.test.ts`, `src/components/SharePanel.test.tsx`, `src/screens/RegistrationsAdminScreen.test.tsx`, `src/screens/SettingsScreen.test.tsx` (aggiornare i riferimenti al token)
 
 **Interfaces:**
 - Consumes: `getSessione(): string | undefined` (già in `config.ts`).
-- Produces: `config.ts` non esporta più `getReadToken`/`setReadToken`.
+- Produces: `config.ts` non esporta più `getReadToken`/`setReadToken`; nessun file di produzione riferisce più `readToken`.
 
-- [ ] **Step 1: Aggiornare il test di `config`**
+- [ ] **Step 1: Aggiornare i test (TDD) ai nuovi comportamenti basati su sessione**
 
-In `src/services/config.test.ts`: rimuovere l'import di `getReadToken`/`setReadToken` (riga 2) e il/i test che li verificano (il blocco che fa `setReadToken('tok')` → `expect(getReadToken()).toBe('tok')`). Lasciare invariati i test di `apiBaseUrl`.
+Aggiornare i test in modo che descrivano il nuovo comportamento (gate su `sessione`, non più su `readToken`). In tutti i test che prima impostavano `localStorage.setItem('readToken', ...)` per "abilitare" la pubblicazione/lettura, sostituire con `localStorage.setItem('sessione', 'jwt-finto')`; dove verificavano l'assenza del token, rimuovere/settare senza `sessione`. Nel dettaglio:
+- `src/services/config.test.ts`: rimuovere import e test di `getReadToken`/`setReadToken`; lasciare quelli di `apiBaseUrl`.
+- `src/services/verifica.test.ts`: adeguare ai nuovi messaggi/logica (vedi Step 3): senza sessione → messaggio "accedi"; con sessione e 401 → sessione non valida; percorso felice → connesso.
+- `src/components/SharePanel.test.tsx`: il caso "senza pubblicazione configurata" ora è "senza sessione".
+- `src/screens/RegistrationsAdminScreen.test.tsx`: idem (token mancante → sessione mancante).
+- `src/screens/SettingsScreen.test.tsx`: rimuovere ogni asserzione sul campo/salvataggio "Token di lettura".
 
-- [ ] **Step 2: Aggiornare il gate di `pubblicaSeAttivo`**
+- [ ] **Step 2: Verificare il fallimento**
 
-In `src/services/pubblicazione.ts`:
-- Cambiare l'import `import { getClient, getReadToken } from './config'` in `import { getClient, getSessione } from './config'`.
-- Alla riga 54 cambiare `if (!getReadToken()) return` in `if (!getSessione()) return`.
+Run: `npm test -- src/services/config.test.ts src/services/verifica.test.ts src/components/SharePanel.test.tsx src/screens/RegistrationsAdminScreen.test.tsx src/screens/SettingsScreen.test.tsx`
+Expected: FAIL (i test citano `getSessione`/comportamenti non ancora implementati, o la compilazione rompe perché i test non usano più `setReadToken`).
 
-- [ ] **Step 3: Rimuovere il campo "Token di lettura" da Impostazioni**
+- [ ] **Step 3: Migrare i consumer**
 
-In `src/screens/SettingsScreen.tsx`: rimuovere lo stato, l'input, la label e l'help-text relativi al "Token di lettura", oltre a ogni chiamata a `getReadToken`/`setReadToken` e al relativo import. Mantenere: campo URL API, stato sessione (Accesso come… / Esci), pulsante "Verifica connessione". Se "Salva" salvava sia URL sia token, farlo salvare solo l'URL.
+`src/services/pubblicazione.ts`:
+- import: `getReadToken`→`getSessione`.
+- riga ~54: `if (!getReadToken()) return` → `if (!getSessione()) return`.
+
+`src/services/verifica.ts` — riscrivere per usare la sessione (endpoint invariati):
+
+```ts
+import { getApiBaseUrl, getSessione } from './config'
+
+export async function verificaConnessione(): Promise<{ ok: boolean; messaggio: string }> {
+  const base = getApiBaseUrl().replace(/\/+$/, '')
+  const sessione = getSessione()
+  // 1) URL raggiungibile?
+  try {
+    await fetch(`${base}/api/torneo/__verifica__`)
+  } catch {
+    return { ok: false, messaggio: 'URL API non raggiungibile: controlla le Impostazioni.' }
+  }
+  // 2) sessione presente e valida?
+  if (!sessione) return { ok: false, messaggio: 'Non hai effettuato l\'accesso: accedi per pubblicare.' }
+  try {
+    const res = await fetch(`${base}/api/iscrizioni/__verifica__`, { headers: { authorization: `Bearer ${sessione}` } })
+    if (res.status === 401) return { ok: false, messaggio: 'Sessione non valida o scaduta: accedi di nuovo.' }
+  } catch {
+    return { ok: false, messaggio: 'URL API non raggiungibile: controlla le Impostazioni.' }
+  }
+  return { ok: true, messaggio: 'Connesso: sei autenticato.' }
+}
+```
+
+`src/components/SharePanel.tsx`:
+- import: `getReadToken`→`getSessione`.
+- in `handlePubblica`: `if (!getReadToken()) { toast('Imposta prima il token in Impostazioni per pubblicare', 'errore'); return }` → `if (!getSessione()) { toast('Accedi per pubblicare', 'errore'); return }`.
+
+`src/screens/RegistrationsAdminScreen.tsx`:
+- import: `getReadToken`→`getSessione`.
+- riga ~48: `const tokenMancante = !getReadToken()` → `const sessioneMancante = !getSessione()`; rinominare gli usi di `tokenMancante` in `sessioneMancante` e adeguare eventuale testo UI da "token" a "accesso/login".
+
+`src/screens/RiepilogoScreen.tsx`:
+- import: `getReadToken`→`getSessione` (mantenere `getClient`).
+- riga ~50: `if (!getReadToken()) return` → `if (!getSessione()) return`.
+- riga ~146: `disabled={sincronizzando || !getReadToken()}` → `disabled={sincronizzando || !getSessione()}`.
+
+`src/screens/SettingsScreen.tsx`:
+- rimuovere import, stato (`readToken`/`setReadTokenValue`), il `<Field label="Token di lettura" ...>` e il `<p className="muted">…non condividerla.</p>` successivo, e le chiamate `setReadToken(readToken)` nel/i handler di salvataggio. Mantenere URL API, stato sessione, "Verifica connessione".
 
 - [ ] **Step 4: Rimuovere `getReadToken`/`setReadToken` da `config.ts`**
 
-In `src/services/config.ts`: eliminare le funzioni `getReadToken` (righe ~20-22) e `setReadToken` (righe ~24-26). Verificare con un grep che non restino riferimenti:
+Eliminare le due funzioni. Poi:
 
 Run: `grep -rn "getReadToken\|setReadToken\|readToken" src/`
-Expected: nessun risultato in codice di produzione (eventuali occorrenze solo in commenti vanno rimosse).
+Expected: nessun risultato in codice di produzione (le occorrenze in `*.test.*` che ancora citano `readToken` vanno anch'esse rimosse; commenti inclusi).
 
 - [ ] **Step 5: Eseguire test e typecheck**
 
-Run: `npm test -- src/services/config.test.ts src/services/pubblicazione.test.ts`
-Expected: PASS (se `pubblicazione.test.ts` non esiste, eseguire solo `config.test.ts`).
+Run: `npm test -- src/services/config.test.ts src/services/verifica.test.ts src/components/SharePanel.test.tsx src/screens/RegistrationsAdminScreen.test.tsx src/screens/SettingsScreen.test.tsx src/screens/RiepilogoScreen.test.tsx`
+Expected: PASS (eseguire solo i file che esistono).
 Run: `npx tsc -b`
-Expected: exit 0 (nessun riferimento residuo, nessun "unused import").
+Expected: exit 0.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/services/config.ts src/services/config.test.ts src/services/pubblicazione.ts src/screens/SettingsScreen.tsx
-git commit -m "refactor(app): rimuove il plumbing morto del token di lettura
+git add -A
+git commit -m "refactor(app): tutti i gate di pubblicazione usano la sessione; rimosso il token di lettura
 
-Il gate di pubblicazione automatica ora dipende dalla sessione; rimosso il campo
-'Token di lettura' da Impostazioni e le funzioni getReadToken/setReadToken.
+Migrati a getSessione i gate in pubblicazione, verifica, SharePanel, RiepilogoScreen
+e RegistrationsAdminScreen; rimosso il campo 'Token di lettura' da Impostazioni e le
+funzioni getReadToken/setReadToken.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 4: UI — pulsante "Pubblica" abilitato solo con login
+### Task 4: SharePanel — affordance visibile "Accedi per pubblicare"
+
+Dopo il Task 3, senza sessione la pubblicazione fallisce con un toast al click. Questo task rende l'affordance **visibile a priori**: quando non si è loggati, al posto del pulsante "Pubblica" si mostra un invito con link a `/accesso`.
 
 **Files:**
-- Modify: `src/screens/RiepilogoScreen.tsx` (gate sessione sulla sezione "Condivisione pubblica")
-- Test: `src/screens/RiepilogoScreen.test.tsx` (se presente; altrimenti crearlo mirato)
+- Modify: `src/components/SharePanel.tsx`
+- Test: `src/components/SharePanel.test.tsx`
 
 **Interfaces:**
-- Consumes: `getSessione(): string | undefined` da `../services/config`.
+- Consumes: `getSessione(): string | undefined` da `../services/config` (già importato dopo il Task 3); `Link` da `react-router-dom`.
 
-- [ ] **Step 1: Scrivere il test del gate**
+- [ ] **Step 1: Scrivere il test (TDD)**
 
-In `src/screens/RiepilogoScreen.test.tsx` (creare se assente), aggiungere due test:
-- Senza sessione (`localStorage` senza `sessione`): la sezione "Condivisione pubblica" mostra un CTA "Accedi per pubblicare" con link a `/accesso` e **non** rende cliccabile "Pubblica".
-- Con sessione presente (`localStorage.setItem('sessione', '<jwt-finto>')`): il pulsante "Pubblica" è presente e abilitato.
+In `src/components/SharePanel.test.tsx`, aggiungere due test (seguendo i pattern di render con router già presenti nel file):
+- Senza sessione (nessun `sessione` in `localStorage`): il componente mostra un link "Accedi" verso `/accesso` e **non** mostra il pulsante "Pubblica".
+- Con sessione (`localStorage.setItem('sessione', 'jwt-finto')`): mostra il pulsante "Pubblica" e nessun invito "Accedi".
 
-Seguire i pattern di test già usati negli altri `*.test.tsx` (render con router, seed IndexedDB via fake-indexeddb, `screen.getByRole`). Per un torneo non pubblicato serve un torneo in IndexedDB con `pubblicato` falso.
+- [ ] **Step 2: Verificare il fallimento**
 
-- [ ] **Step 2: Eseguire il test per verificarne il fallimento**
+Run: `npm test -- src/components/SharePanel.test.tsx`
+Expected: FAIL — l'invito "Accedi" non esiste ancora.
 
-Run: `npm test -- src/screens/RiepilogoScreen.test.tsx`
-Expected: FAIL — il CTA "Accedi per pubblicare" non esiste ancora.
+- [ ] **Step 3: Implementare l'affordance**
 
-- [ ] **Step 3: Implementare il gate**
-
-In `src/screens/RiepilogoScreen.tsx`, nella sezione "Condivisione pubblica": leggere `const sessione = getSessione()` (import da `../services/config`). Se `!sessione`, al posto del pulsante "Pubblica" mostrare un breve testo + link: "Accedi per pubblicare il tabellone" con `<Link to="/accesso">Accedi</Link>`. Se il torneo è già pubblicato, mantenere visibili "Copia link"/QR ma richiedere la sessione per "Interrompi pubblicazione" (stesso gate). Coerente con il pattern di HomeScreen "Carica dal cloud".
+In `src/components/SharePanel.tsx`: leggere `const sessione = getSessione()`. Quando il torneo **non** è pubblicato e `!sessione`, rendere — al posto del bottone "Pubblica" — un breve testo con `<Link to="/accesso">Accedi</Link>` (es. "Accedi per pubblicare il tabellone."). Con sessione presente, comportamento invariato (bottone "Pubblica"). Aggiungere l'import di `Link` da `react-router-dom` se non presente. (Il gate difensivo dentro `handlePubblica` del Task 3 resta come rete di sicurezza.)
 
 - [ ] **Step 4: Eseguire test e typecheck**
 
-Run: `npm test -- src/screens/RiepilogoScreen.test.tsx`
+Run: `npm test -- src/components/SharePanel.test.tsx`
 Expected: PASS.
 Run: `npx tsc -b`
 Expected: exit 0.
@@ -389,8 +444,8 @@ Expected: exit 0.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/screens/RiepilogoScreen.tsx src/screens/RiepilogoScreen.test.tsx
-git commit -m "feat(app): 'Pubblica' richiede il login (gate sessione)
+git add src/components/SharePanel.tsx src/components/SharePanel.test.tsx
+git commit -m "feat(app): SharePanel mostra 'Accedi per pubblicare' senza login
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
