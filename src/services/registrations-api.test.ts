@@ -1,7 +1,20 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { creaClient } from './registrations-api'
+import type { PublicSnapshot } from '../types/public'
 
-const client = () => creaClient({ baseUrl: 'http://api.test', token: 'tok' })
+const client = () => creaClient({ baseUrl: 'http://api.test', sessione: 'sess-xyz' })
+
+const snapshot: PublicSnapshot = {
+  codice: 'ABC',
+  nome: 'Coppa',
+  tipologia: '2x2',
+  formato: null,
+  regolePunteggio: { setAlMeglioDi: 1, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true },
+  updatedAt: '',
+  teams: [],
+  groups: [],
+  matches: [],
+}
 
 function mockFetch(status: number, body: unknown) {
   return vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }))
@@ -18,12 +31,12 @@ describe('registrations-api', () => {
     expect(f).toHaveBeenCalledWith('http://api.test/api/torneo/ABC', expect.objectContaining({ method: 'GET' }))
   })
 
-  it('pubblicaRiepilogo invia il token nell\'header', async () => {
+  it('pubblicaRiepilogo invia la sessione nell\'header', async () => {
     const f = mockFetch(200, { codice: 'ABC', nome: 'C', tipologia: '2x2', formato: null, chiuso: false, updatedAt: '' })
     vi.stubGlobal('fetch', f)
     await client().pubblicaRiepilogo({ codice: 'ABC', nome: 'C', tipologia: '2x2', formato: null, chiuso: false, updatedAt: '' })
     const opts = (f.mock.calls[0] as unknown[])?.[1] as RequestInit
-    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer tok')
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer sess-xyz')
     expect(opts.method).toBe('POST')
   })
 
@@ -39,12 +52,47 @@ describe('registrations-api', () => {
     expect(r).toHaveLength(1)
   })
 
+  it('elencaIscrizioni invia la sessione nell\'header', async () => {
+    const f = mockFetch(200, { iscrizioni: [] })
+    vi.stubGlobal('fetch', f)
+    await client().elencaIscrizioni('ABC')
+    const opts = (f.mock.calls[0] as unknown[])?.[1] as RequestInit
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer sess-xyz')
+  })
+
+  it('eliminaIscrizione invia la sessione nell\'header', async () => {
+    const f = mockFetch(200, { ok: true })
+    vi.stubGlobal('fetch', f)
+    await client().eliminaIscrizione('ABC', '1')
+    const opts = (f.mock.calls[0] as unknown[])?.[1] as RequestInit
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer sess-xyz')
+    expect(opts.method).toBe('DELETE')
+  })
+
+  it('pubblicaSnapshot invia la sessione nell\'header', async () => {
+    const f = mockFetch(200, { ok: true })
+    vi.stubGlobal('fetch', f)
+    await client().pubblicaSnapshot(snapshot)
+    const opts = (f.mock.calls[0] as unknown[])?.[1] as RequestInit
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer sess-xyz')
+    expect(opts.method).toBe('POST')
+  })
+
+  it('rimuoviSnapshot invia la sessione nell\'header', async () => {
+    const f = mockFetch(200, { ok: true })
+    vi.stubGlobal('fetch', f)
+    await client().rimuoviSnapshot('ABC')
+    const opts = (f.mock.calls[0] as unknown[])?.[1] as RequestInit
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer sess-xyz')
+    expect(opts.method).toBe('DELETE')
+  })
+
   it('lancia un errore leggibile su risposta non ok', async () => {
     vi.stubGlobal('fetch', mockFetch(401, { error: 'non autorizzato' }))
     await expect(client().elencaIscrizioni('ABC')).rejects.toThrow(/non autorizzato/i)
   })
 
-  it('non invia authorization header quando manca il token', async () => {
+  it('non invia authorization header quando manca la sessione', async () => {
     const f = mockFetch(200, { iscrizioni: [] })
     vi.stubGlobal('fetch', f)
     await creaClient({ baseUrl: 'http://api.test' }).elencaIscrizioni('ABC')

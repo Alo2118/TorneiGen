@@ -38,5 +38,5 @@ export function clearSessione(): void {
 }
 
 export function getClient(): RegistrationsClient {
-  return creaClient({ baseUrl: getApiBaseUrl(), token: getReadToken(), sessione: getSessione() })
+  return creaClient({ baseUrl: getApiBaseUrl(), sessione: getSessione() })
 }
