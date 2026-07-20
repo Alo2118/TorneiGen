@@ -10,7 +10,7 @@ vi.mock('../services/pubblicazione', () => ({
   pubblica: (...a: unknown[]) => pubblica(...a),
   interrompiPubblicazione: (...a: unknown[]) => interrompiPubblicazione(...a),
 }))
-vi.mock('../services/config', () => ({ getReadToken: () => 'token' }))
+vi.mock('../services/config', () => ({ getSessione: () => 'jwt-finto' }))
 vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,AAAA') } }))
 
 import { SharePanel } from './SharePanel'

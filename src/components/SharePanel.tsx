@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { pubblica, interrompiPubblicazione } from '../services/pubblicazione'
-import { getReadToken } from '../services/config'
+import { getSessione } from '../services/config'
 import { QRCode } from './QRCode'
 import { Button } from './Button'
 import { useToast } from './Toast'
@@ -16,8 +16,8 @@ export function SharePanel({ tournament }: Props) {
   const link = `${window.location.origin}/pubblico/${tournament.codiceIscrizione}`
 
   async function handlePubblica() {
-    if (!getReadToken()) {
-      toast('Imposta prima il token in Impostazioni per pubblicare', 'errore')
+    if (!getSessione()) {
+      toast('Accedi per pubblicare', 'errore')
       return
     }
     setInCorso(true)

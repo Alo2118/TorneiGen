@@ -17,14 +17,6 @@ export function setApiBaseUrl(v: string): void {
   localStorage.setItem('apiBaseUrl', v.trim())
 }
 
-export function getReadToken(): string | undefined {
-  return localStorage.getItem('readToken') ?? undefined
-}
-
-export function setReadToken(v: string): void {
-  localStorage.setItem('readToken', v.trim())
-}
-
 export function getSessione(): string | undefined {
   return localStorage.getItem('sessione') ?? undefined
 }

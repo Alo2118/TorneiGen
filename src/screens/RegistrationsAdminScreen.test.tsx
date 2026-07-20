@@ -13,7 +13,7 @@ const t: Tournament = {
 }
 
 describe('RegistrationsAdminScreen', () => {
-  beforeEach(async () => { localStorage.clear(); await db.tournaments.clear(); await db.teams.clear(); await saveTournament(t); localStorage.setItem('readToken', 'tok') })
+  beforeEach(async () => { localStorage.clear(); await db.tournaments.clear(); await db.teams.clear(); await saveTournament(t); localStorage.setItem('sessione', 'jwt-finto') })
   afterEach(() => vi.restoreAllMocks())
 
   it('apre le iscrizioni pubblicando il riepilogo e mostra il link', async () => {

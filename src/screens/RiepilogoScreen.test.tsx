@@ -30,7 +30,7 @@ describe('RiepilogoScreen', () => {
   })
 
   it('auto-importa le nuove iscrizioni come squadre in attesa', async () => {
-    localStorage.setItem('readToken', 'tok')
+    localStorage.setItem('sessione', 'jwt-finto')
     const f = vi.fn(async () => new Response(JSON.stringify({ iscrizioni: [{ id: '1', codice: 'ABC', nomeSquadra: 'Squali', createdAt: '', giocatori: [{ nome: 'A', cognome: 'B', email: 'a@x.it', telefono: '1' }, { nome: 'C', cognome: 'D', email: 'c@x.it', telefono: '2' }] }] }), { status: 200, headers: { 'content-type': 'application/json' } }))
     vi.stubGlobal('fetch', f)
     render(
@@ -48,7 +48,7 @@ describe('RiepilogoScreen', () => {
   })
 
   it('mostra un toast di errore quando il token non è valido (401)', async () => {
-    localStorage.setItem('readToken', 'sbagliato')
+    localStorage.setItem('sessione', 'sbagliato')
     const f = vi.fn(async () => new Response(JSON.stringify({ error: 'non autorizzato' }), { status: 401, headers: { 'content-type': 'application/json' } }))
     vi.stubGlobal('fetch', f)
     render(

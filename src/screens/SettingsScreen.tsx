@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Field } from '../components/Field'
 import { Button } from '../components/Button'
-import { getSavedApiBaseUrl, getApiBaseUrl, getReadToken, setApiBaseUrl, setReadToken } from '../services/config'
+import { getSavedApiBaseUrl, getApiBaseUrl, setApiBaseUrl } from '../services/config'
 import { verificaConnessione } from '../services/verifica'
 import { utenteCorrente, esci, type Utente } from '../services/auth'
 
@@ -12,7 +12,6 @@ export function SettingsScreen() {
   // applica un fallback (env/default) utile al client API ma non va mostrato
   // come se fosse già stato scelto dall'utente.
   const [apiBaseUrl, setApiBaseUrlValue] = useState(() => getSavedApiBaseUrl())
-  const [readToken, setReadTokenValue] = useState(() => getReadToken() ?? '')
   const [salvato, setSalvato] = useState(false)
   const [verifica, setVerifica] = useState<{ ok: boolean; messaggio: string } | null>(null)
   const [verificando, setVerificando] = useState(false)
@@ -42,7 +41,6 @@ export function SettingsScreen() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setApiBaseUrl(apiBaseUrl)
-    setReadToken(readToken)
     setSalvato(true)
     setVerifica(null)
   }
@@ -51,7 +49,6 @@ export function SettingsScreen() {
     // Verifica i valori attualmente salvati: se ci sono modifiche non salvate,
     // salvale prima, così il test riflette davvero ciò che verrà usato dall'app.
     setApiBaseUrl(apiBaseUrl)
-    setReadToken(readToken)
     setSalvato(true)
     setVerificando(true)
     setVerifica(null)
@@ -102,19 +99,6 @@ export function SettingsScreen() {
           placeholder={placeholderUrl}
         />
         <p className="muted">L'indirizzo del tuo Worker Cloudflare, quello che riceve le iscrizioni.</p>
-
-        <Field
-          label="Token di lettura"
-          type="password"
-          value={readToken}
-          onChange={(e) => {
-            setReadTokenValue(e.target.value)
-            setSalvato(false)
-            setVerifica(null)
-          }}
-          autoComplete="off"
-        />
-        <p className="muted">La chiave privata del tuo deploy: si imposta una volta e serve solo a te per scaricare le iscrizioni; non condividerla.</p>
 
         <div className="setup-actions">
           {salvato && <span className="muted" role="status">Salvato</span>}
