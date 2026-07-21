@@ -45,6 +45,8 @@ export function SetupScreen() {
   const [durataPartitaMin, setDurataPartitaMin] = useState(30)
   const [faseFinale, setFaseFinale] = useState<'diretta' | 'doppia'>('diretta')
   const [qualificatiPerGirone, setQualificatiPerGirone] = useState<number | 'tutti'>('tutti')
+  const [finaleTerzoPosto, setFinaleTerzoPosto] = useState(false)
+  const [gironeConsolazione, setGironeConsolazione] = useState(false)
   const [pronto, setPronto] = useState(!id)
 
   useEffect(() => {
@@ -69,6 +71,8 @@ export function SetupScreen() {
       setDurataPartitaMin(t.durataPartitaMin ?? 30)
       setFaseFinale(t.faseFinale ?? 'diretta')
       setQualificatiPerGirone(t.qualificatiPerGirone ?? 'tutti')
+      setFinaleTerzoPosto(t.finaleTerzoPosto ?? false)
+      setGironeConsolazione(t.gironeConsolazione ?? false)
       setPronto(true)
     })
     return () => {
@@ -78,6 +82,15 @@ export function SetupScreen() {
 
   function aggiornaRegole(patch: Partial<RegolePunteggio>) {
     setRegole((r) => ({ ...r, ...patch }))
+  }
+
+  function presetFormula3set() {
+    setFormato('gironi_eliminazione')
+    aggiornaRegole({ setAlMeglioDi: 3, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true, gironiPerSet: true })
+    setFaseFinale('diretta')
+    setQualificatiPerGirone(2)
+    setFinaleTerzoPosto(true)
+    setGironeConsolazione(true)
   }
 
   function aggiornaGiornata(index: number, patch: Partial<GiornataForm>) {
@@ -111,6 +124,8 @@ export function SetupScreen() {
       durataPartitaMin,
       faseFinale,
       qualificatiPerGirone,
+      finaleTerzoPosto,
+      gironeConsolazione,
     }
     await saveTournament(torneo)
     notificaModificaOrg(torneo.id)
@@ -333,6 +348,40 @@ export function SetupScreen() {
                 )}
               </label>
             </div>
+
+            <label className="field field-checkbox">
+              <input
+                type="checkbox"
+                className="field-input"
+                checked={regole.gironiPerSet ?? false}
+                onChange={(e) => aggiornaRegole({ gironiPerSet: e.target.checked })}
+              />
+              <span className="field-label">Classifica gironi a set vinti (sempre 3 set)</span>
+            </label>
+
+            <label className="field field-checkbox">
+              <input
+                type="checkbox"
+                className="field-input"
+                checked={finaleTerzoPosto}
+                onChange={(e) => setFinaleTerzoPosto(e.target.checked)}
+              />
+              <span className="field-label">Finale 3°/4° posto</span>
+            </label>
+
+            <label className="field field-checkbox">
+              <input
+                type="checkbox"
+                className="field-input"
+                checked={gironeConsolazione}
+                onChange={(e) => setGironeConsolazione(e.target.checked)}
+              />
+              <span className="field-label">Girone di consolazione per i non qualificati</span>
+            </label>
+
+            <Button type="button" variant="ghost" onClick={presetFormula3set}>
+              Preset Formula 3-set
+            </Button>
           </fieldset>
         )}
 
