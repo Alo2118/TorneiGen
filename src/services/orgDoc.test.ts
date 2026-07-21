@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '../db/database'
 import { saveTournament } from '../db/repositories'
-import { buildOrgDoc, applyOrgDoc, scriviOrgLocale } from './orgDoc'
+import { buildOrgDoc, applyOrgDoc, scriviOrgLocale, strutturaDiverge } from './orgDoc'
+import type { OrgDoc } from '../types/org'
 import type { Tournament, Team, Group, Match } from '../engine/types'
 
 const torneo: Tournament = {
@@ -35,7 +36,14 @@ describe('buildOrgDoc', () => {
     expect('set' in s).toBe(false)
     expect('vincitoreId' in s).toBe(false)
     expect('stato' in s).toBe(false)
-    expect(JSON.stringify(doc)).not.toContain('conclusa')
+    expect(JSON.stringify(doc.struttura)).not.toContain('conclusa')
+  })
+
+  it('include i risultati (set/vincitore/stato) nella sezione risultati', async () => {
+    const doc = await buildOrgDoc('t1')
+    expect(doc.risultati).toEqual([
+      { id: 'm1', set: [{ puntiA: 21, puntiB: 15 }], vincitoreId: 'a', stato: 'conclusa' },
+    ])
   })
 
   it('esclude i campi locali dal torneo nel documento', async () => {
@@ -64,6 +72,57 @@ describe('applyOrgDoc', () => {
     expect(res.tournament.orgVersion).toBe(5)
   })
 
+  it('prende il risultato dal cloud quando la sezione risultati lo contiene', () => {
+    const doc: import('../types/org').OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [{ id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' }],
+      risultati: [{ id: 'm1', set: [{ puntiA: 15, puntiB: 21 }], vincitoreId: 'b', stato: 'conclusa' }],
+    }
+    // il locale aveva un risultato diverso: vince il cloud
+    const locali: Match[] = [match('m1', { set: [{ puntiA: 21, puntiB: 10 }], stato: 'conclusa', vincitoreId: 'a' })]
+    const res = applyOrgDoc(doc, torneo, locali)
+    expect(res.matches[0].set).toEqual([{ puntiA: 15, puntiB: 21 }])
+    expect(res.matches[0].vincitoreId).toBe('b')
+    expect(res.matches[0].stato).toBe('conclusa')
+  })
+
+  it('unione: tiene il risultato locale per le partite che il cloud non ha ancora', () => {
+    const doc: import('../types/org').OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [
+        { id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' },
+        { id: 'm2', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'c', teamBId: 'd' },
+      ],
+      risultati: [{ id: 'm1', set: [{ puntiA: 21, puntiB: 9 }], vincitoreId: 'a', stato: 'conclusa' }],
+    }
+    // m2 segnata solo in locale: non deve andare persa
+    const locali: Match[] = [match('m2', { set: [{ puntiA: 21, puntiB: 12 }], stato: 'conclusa', vincitoreId: 'c' })]
+    const res = applyOrgDoc(doc, torneo, locali)
+    const m1 = res.matches.find((m) => m.id === 'm1')!
+    const m2 = res.matches.find((m) => m.id === 'm2')!
+    expect(m1.set).toEqual([{ puntiA: 21, puntiB: 9 }]) // dal cloud
+    expect(m2.set).toEqual([{ puntiA: 21, puntiB: 12 }]) // dal locale, preservato
+    expect(m2.vincitoreId).toBe('c')
+  })
+
+  it('ricalcola l\'avanzamento del tabellone dopo il merge (coerenza struttura/risultati)', () => {
+    const doc: OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [
+        { id: 's1', tournamentId: 't1', fase: 'tabellone', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B' },
+        { id: 'f', tournamentId: 't1', fase: 'tabellone', round: 2, posizioneTabellone: 0, teamAId: null, teamBId: null },
+      ],
+      risultati: [], // il cloud non ha ancora il risultato di s1
+    }
+    // s1 è concluso solo in locale: dopo il merge il vincitore deve avanzare in finale
+    const locali: Match[] = [
+      match('s1', { fase: 'tabellone', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 21, puntiB: 10 }], stato: 'conclusa', vincitoreId: 'A' }),
+    ]
+    const res = applyOrgDoc(doc, torneo, locali)
+    const f = res.matches.find((m) => m.id === 'f')!
+    expect(f.teamAId).toBe('A')
+  })
+
   it('inizializza punteggi vuoti per match nuovi e rimuove quelli assenti dal cloud', () => {
     const doc: import('../types/org').OrgDoc = {
       tournament: torneo, teams: [], groups: [],
@@ -75,6 +134,29 @@ describe('applyOrgDoc', () => {
     expect(res.matches[0].id).toBe('nuovo')
     expect(res.matches[0].set).toEqual([])
     expect(res.matches[0].stato).toBe('programmata')
+  })
+})
+
+describe('strutturaDiverge', () => {
+  const base: OrgDoc = {
+    tournament: torneo, teams: [team('a'), team('b')], groups: [group],
+    struttura: [{ id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' }],
+  }
+  it('è falsa se cambiano solo i risultati (stessa struttura)', () => {
+    const conRisultati: OrgDoc = { ...base, risultati: [{ id: 'm1', set: [{ puntiA: 21, puntiB: 9 }], vincitoreId: 'a', stato: 'conclusa' }] }
+    expect(strutturaDiverge(base, conRisultati)).toBe(false)
+  })
+  it('non dipende dall\'ordine di squadre/gironi/struttura', () => {
+    const riordinato: OrgDoc = { ...base, teams: [team('b'), team('a')] }
+    expect(strutturaDiverge(base, riordinato)).toBe(false)
+  })
+  it('è vera se cambia la struttura (nome torneo, squadre, tabellone)', () => {
+    expect(strutturaDiverge(base, { ...base, tournament: { ...torneo, nome: 'Altro' } })).toBe(true)
+    expect(strutturaDiverge(base, { ...base, teams: [team('a')] })).toBe(true)
+    expect(strutturaDiverge(base, { ...base, struttura: [] })).toBe(true)
+  })
+  it('gestisce documenti incompleti senza lanciare', () => {
+    expect(strutturaDiverge(base, {} as OrgDoc)).toBe(true)
   })
 })
 

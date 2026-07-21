@@ -83,14 +83,39 @@ describe('tiraOrg', () => {
     expect(matches).toHaveLength(0) // struttura cloud vuota → match locali rimossi
   })
 
-  it('se cloud è avanti CON modifiche pendenti, segnala conflitto', async () => {
+  it('se cloud è avanti con pending e la STRUTTURA diverge, segnala conflitto', async () => {
     await saveTournament({ ...torneo, orgVersion: 1, orgPending: true })
     const doc = await buildOrgDoc('t1')
-    const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(doc), version: 4, updatedAt: 'x' }
+    const docDiverso = { ...doc, tournament: { ...doc.tournament, nome: 'Struttura diversa' } }
+    const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(docDiverso), version: 4, updatedAt: 'x' }
     const esito = await tiraOrg('t1', fakeClient({ getOrg: async () => record }))
     expect(esito.stato).toBe('conflitto')
     expect(esito.versioneCloud).toBe(4)
     expect(esito.docCloud).toBeTruthy()
+  })
+
+  it('se cloud è avanti con pending ma solo di PUNTEGGI (stessa struttura), unisce senza conflitto', async () => {
+    await saveTournament({ ...torneo, orgVersion: 1, orgPending: true })
+    const doc = await buildOrgDoc('t1') // stessa struttura, m1 senza risultato locale
+    const docCloud = { ...doc, risultati: [{ id: 'm1', set: [{ puntiA: 21, puntiB: 9 }], vincitoreId: 'a', stato: 'conclusa' as const }] }
+    const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(docCloud), version: 4, updatedAt: 'x' }
+    const esito = await tiraOrg('t1', fakeClient({ getOrg: async () => record }))
+    expect(esito.stato).toBe('aggiornato')
+    const m = await matchesOf('t1')
+    expect(m[0].set).toEqual([{ puntiA: 21, puntiB: 9 }]) // risultato preso dal cloud
+  })
+
+  it('con pending di punteggi non ancora sul cloud, unisce e RI-PROPAGA (push) per convergere', async () => {
+    // il locale ha un risultato che il cloud non ha: dopo l'unione va ripushato
+    await saveTournament({ ...torneo, orgVersion: 1, orgPending: true })
+    await db.matches.put(match('m1', { set: [{ puntiA: 21, puntiB: 5 }], stato: 'conclusa', vincitoreId: 'a' }))
+    const doc = await buildOrgDoc('t1')
+    const docCloud = { ...doc, risultati: [] } // il cloud non ha il risultato di m1
+    const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(docCloud), version: 4, updatedAt: 'x' }
+    const putOrg = vi.fn(async () => ({ conflitto: false, version: 5 }))
+    const esito = await tiraOrg('t1', fakeClient({ getOrg: async () => record, putOrg }))
+    expect(putOrg).toHaveBeenCalled() // ri-propaga l'unione
+    expect(esito.stato).toBe('sincronizzato')
   })
 
   it('se le versioni combaciano e non c\'è pending, è in pari', async () => {
@@ -190,10 +215,19 @@ describe('confrontaCloud', () => {
     expect(r).toEqual({ stato: 'cloud_avanti', versioneCloud: 5 })
   })
 
-  it('cloud più recente ma anche modifiche locali -> conflitto', async () => {
+  it('cloud più recente con pending e struttura diversa -> conflitto', async () => {
     localStorage.setItem('sessione', 'x')
     await saveTournament({ ...torneo, orgVersion: 2, orgPending: true })
+    // orgRec ha doc '{}' → struttura diversa dal locale → conflitto
     expect((await confrontaCloud('t1', fakeClient({ getOrg: async () => orgRec(5) }))).stato).toBe('conflitto')
+  })
+
+  it('cloud più recente con pending ma stessa struttura (solo punteggi) -> cloud_avanti', async () => {
+    localStorage.setItem('sessione', 'x')
+    await saveTournament({ ...torneo, orgVersion: 2, orgPending: true })
+    const doc = await buildOrgDoc('t1')
+    const rec: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(doc), version: 5, updatedAt: '' }
+    expect((await confrontaCloud('t1', fakeClient({ getOrg: async () => rec }))).stato).toBe('cloud_avanti')
   })
 
   it('stessa versione senza pending -> inpari', async () => {

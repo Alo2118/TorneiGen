@@ -1,7 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { db } from '../db/database'
 import { salvaEProppaga } from './saveResult'
 import type { Match, RegolePunteggio } from '../engine/types'
+
+vi.mock('./orgSync', () => ({ notificaModificaOrg: vi.fn() }))
+import { notificaModificaOrg } from './orgSync'
 
 const r: RegolePunteggio = { setAlMeglioDi: 1, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true }
 function tab(id: string, round: number, index: number, a: string | null, b: string | null): Match {
@@ -15,6 +18,12 @@ describe('salvaEProppaga', () => {
     await salvaEProppaga('t1', 's1', [{ puntiA: 21, puntiB: 10 }], r)
     const f = await db.matches.get('f')
     expect(f?.teamAId).toBe('A')
+  })
+
+  it('dopo il salvataggio segnala la modifica per la sync (invio automatico)', async () => {
+    await db.matches.bulkPut([tab('s1', 1, 0, 'A', 'B')])
+    await salvaEProppaga('t1', 's1', [{ puntiA: 21, puntiB: 10 }], r)
+    expect(notificaModificaOrg).toHaveBeenCalledWith('t1')
   })
 
   it('lancia un errore se la partita non esiste', async () => {

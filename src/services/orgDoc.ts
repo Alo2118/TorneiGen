@@ -1,7 +1,8 @@
 import type { Tournament, Team, Group, Match } from '../engine/types'
-import type { OrgDoc, MatchStruct } from '../types/org'
+import type { OrgDoc, MatchStruct, RisultatoStruct } from '../types/org'
 import { db } from '../db/database'
 import { getTournament, teamsOf, groupsOf, matchesOf } from '../db/repositories'
+import { propagaTabellone, propagaDoppia } from './results'
 
 function strutturaDaMatch(m: Match): MatchStruct {
   const copia: Partial<Match> = { ...m }
@@ -9,6 +10,30 @@ function strutturaDaMatch(m: Match): MatchStruct {
   delete copia.vincitoreId
   delete copia.stato
   return copia as MatchStruct
+}
+
+// Una partita ha un esito da sincronizzare se ha almeno un set o non è più programmata.
+function haRisultato(m: { set: Match['set']; stato: Match['stato'] }): boolean {
+  return m.set.length > 0 || m.stato !== 'programmata'
+}
+
+/**
+ * true se due documenti divergono nella STRUTTURA (torneo, squadre, gironi,
+ * tabellone), ignorando i risultati. Serve a distinguere un vero conflitto
+ * strutturale da una semplice divergenza di punteggi (che si unisce senza
+ * conflitto). Robusto verso documenti incompleti (campi mancanti).
+ */
+export function strutturaDiverge(a: OrgDoc, b: OrgDoc): boolean {
+  const perId = <T extends { id: string }>(xs: T[] | undefined): T[] =>
+    [...(xs ?? [])].sort((x, y) => x.id.localeCompare(y.id))
+  const norm = (d: OrgDoc): string =>
+    JSON.stringify({
+      tournament: d.tournament ?? null,
+      teams: perId(d.teams),
+      groups: perId(d.groups),
+      struttura: perId(d.struttura),
+    })
+  return norm(a) !== norm(b)
 }
 
 export async function buildOrgDoc(tournamentId: string): Promise<OrgDoc> {
@@ -20,7 +45,10 @@ export async function buildOrgDoc(tournamentId: string): Promise<OrgDoc> {
   ])
   if (!t) throw new Error('Torneo non trovato')
   const tournament: Tournament = { ...t, pubblicato: undefined, orgVersion: undefined, orgPending: undefined }
-  return { tournament, teams, groups, struttura: matches.map(strutturaDaMatch) }
+  const risultati: RisultatoStruct[] = matches
+    .filter(haRisultato)
+    .map((m) => ({ id: m.id, set: m.set, vincitoreId: m.vincitoreId ?? null, stato: m.stato }))
+  return { tournament, teams, groups, struttura: matches.map(strutturaDaMatch), risultati }
 }
 
 export interface StatoLocaleOrg {
@@ -36,7 +64,14 @@ export function applyOrgDoc(
   localMatches: Match[],
 ): StatoLocaleOrg {
   const perId = new Map(localMatches.map((m) => [m.id, m]))
+  const risultatiCloud = new Map((doc.risultati ?? []).map((x) => [x.id, x]))
   const matches: Match[] = doc.struttura.map((s) => {
+    // Merge per-partita: il risultato dal cloud vince se presente, altrimenti
+    // si tiene quello locale (unione senza perdite tra i due dispositivi).
+    const cloud = risultatiCloud.get(s.id)
+    if (cloud) {
+      return { ...s, set: cloud.set, vincitoreId: cloud.vincitoreId ?? null, stato: cloud.stato }
+    }
     const locale = perId.get(s.id)
     return {
       ...s,
@@ -51,7 +86,17 @@ export function applyOrgDoc(
     orgVersion: localTournament?.orgVersion,
     orgPending: localTournament?.orgPending,
   }
-  return { tournament, teams: doc.teams, groups: doc.groups, matches }
+  // Nel tabellone il vincitore avanza (teamAId/teamBId dei turni successivi sono
+  // stato DERIVATO dai risultati). Dopo il merge ricalcolo l'avanzamento, così la
+  // struttura resta coerente coi risultati qualunque sia la loro provenienza.
+  const haTabellone = matches.some((m) => m.fase === 'tabellone')
+  const haDoppia = matches.some((m) => m.tabelloneTipo !== undefined && m.tabelloneTipo !== 'terzo')
+  const finali = !haTabellone
+    ? matches
+    : haDoppia
+      ? propagaDoppia(matches, tournament.regolePunteggio)
+      : propagaTabellone(matches, tournament.regolePunteggio)
+  return { tournament, teams: doc.teams, groups: doc.groups, matches: finali }
 }
 
 export async function scriviOrgLocale(s: StatoLocaleOrg): Promise<void> {
