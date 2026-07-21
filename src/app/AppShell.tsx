@@ -11,6 +11,7 @@ const SEZIONI = [
   { to: '', label: 'Riepilogo', icon: '⌂' },
   { to: 'squadre', label: 'Squadre', icon: '▤' },
   { to: 'iscrizioni', label: 'Iscrizioni', icon: '✎' },
+  { to: 'gironi', label: 'Gironi', icon: '◫' },
   { to: 'tabellone', label: 'Tabellone', icon: '☷' },
   { to: 'calendario', label: 'Calendario', icon: '⏱' },
   { to: 'classifiche', label: 'Classifiche', icon: '≡' },

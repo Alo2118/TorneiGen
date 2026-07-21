@@ -19,7 +19,9 @@ function matchGirone(t: Tournament, groupId: string, round: number, a: string | 
   }
 }
 
-function roundRobinIntoGroup(t: Tournament, group: Group): Match[] {
+// Round-robin (partite) di un singolo girone. Esportata per la rigenerazione
+// dopo la modifica manuale della composizione dei gironi.
+export function partiteGirone(t: Tournament, group: Group): Match[] {
   return generateRoundRobin(group.teamIds)
     .filter((p) => p.teamAId !== null && p.teamBId !== null) // salta i bye
     .map((p) => matchGirone(t, group.id, p.round, p.teamAId, p.teamBId))
@@ -31,7 +33,7 @@ function gironi(t: Tournament, teams: Team[], numeroGironi: number): EsitoGenera
   const groups: Group[] = gruppiIds.map((teamIds, i) => ({
     id: newId(), tournamentId: t.id, nome: `Girone ${String.fromCharCode(65 + i)}`, teamIds,
   }))
-  const matches = groups.flatMap((g) => roundRobinIntoGroup(t, g))
+  const matches = groups.flatMap((g) => partiteGirone(t, g))
   return { groups, matches }
 }
 
@@ -70,7 +72,7 @@ export function generaTorneo(torneo: Tournament, teams: Team[]): EsitoGenerazion
   switch (torneo.formato) {
     case 'girone_italiana': {
       const group: Group = { id: newId(), tournamentId: torneo.id, nome: 'Girone unico', teamIds: teams.map((t) => t.id) }
-      return { groups: [group], matches: roundRobinIntoGroup(torneo, group) }
+      return { groups: [group], matches: partiteGirone(torneo, group) }
     }
     case 'gironi_eliminazione':
       return gironi(torneo, teams, NUM_GIRONI_DEFAULT)

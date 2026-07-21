@@ -846,3 +846,11 @@ button.match-box:hover { border-color: var(--sea); }
 .home-head-azioni { display: flex; gap: var(--space); align-items: center; }
 .home-carica { border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space); margin-bottom: var(--space); }
 .home-carica-azioni { margin-top: var(--space); }
+
+/* --- Editor gironi (drag & drop squadre tra i gironi) --- */
+.gironi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space); margin: var(--space) 0; }
+.girone-col { border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space); background: var(--surface); min-height: 96px; }
+.girone-col-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space); margin-bottom: var(--space); }
+.girone-col-head h2 { margin: 0; font-size: 1rem; }
+.girone-chip { border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; margin-bottom: 6px; background: var(--paper); cursor: grab; user-select: none; touch-action: none; }
+.girone-chip:active, .girone-chip-trascina { cursor: grabbing; border-color: var(--sea); box-shadow: 0 2px 8px rgba(14,154,167,0.25); }

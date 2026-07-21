@@ -5,6 +5,7 @@ import { RiepilogoScreen } from '../screens/RiepilogoScreen'
 import { SetupScreen } from '../screens/SetupScreen'
 import { TeamsScreen } from '../screens/TeamsScreen'
 import { BracketScreen } from '../screens/BracketScreen'
+import { GironiScreen } from '../screens/GironiScreen'
 import { CalendarScreen } from '../screens/CalendarScreen'
 import { StandingsScreen } from '../screens/StandingsScreen'
 import { RegistrationsAdminScreen } from '../screens/RegistrationsAdminScreen'
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="tornei/:id" element={<RiepilogoScreen />} />
         <Route path="tornei/:id/setup" element={<SetupScreen />} />
         <Route path="tornei/:id/squadre" element={<TeamsScreen />} />
+        <Route path="tornei/:id/gironi" element={<GironiScreen />} />
         <Route path="tornei/:id/tabellone" element={<BracketScreen />} />
         <Route path="tornei/:id/calendario" element={<CalendarScreen />} />
         <Route path="tornei/:id/classifiche" element={<StandingsScreen />} />
