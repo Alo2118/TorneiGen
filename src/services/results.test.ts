@@ -25,6 +25,45 @@ describe('applicaRisultato', () => {
   })
 })
 
+describe('applicaRisultato con gironiPerSet', () => {
+  const regoleSet: RegolePunteggio = { setAlMeglioDi: 3, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true, gironiPerSet: true }
+  const matchBase = (fase: Match['fase']): Match => ({
+    id: 'm', tournamentId: 't', fase, round: 1, teamAId: 'a', teamBId: 'b', set: [], stato: 'programmata',
+  })
+  const set3 = [{ puntiA: 21, puntiB: 15 }, { puntiA: 10, puntiB: 21 }, { puntiA: 15, puntiB: 12 }]
+
+  it('girone: conclusa solo con 3 set', () => {
+    const parziale = applicaRisultato(matchBase('girone'), set3.slice(0, 2), regoleSet)
+    expect(parziale.stato).toBe('in_corso')
+    const pieno = applicaRisultato(matchBase('girone'), set3, regoleSet)
+    expect(pieno.stato).toBe('conclusa')
+    expect(pieno.vincitoreId).toBe('a')
+  })
+  it('tabellone: resta best-of-3 (2-0 è già conclusa) anche con gironiPerSet', () => {
+    const m = applicaRisultato(matchBase('tabellone'), [{ puntiA: 21, puntiB: 10 }, { puntiA: 21, puntiB: 12 }], regoleSet)
+    expect(m.stato).toBe('conclusa')
+  })
+})
+
+describe('propagaTabellone: finalina 3°/4° posto', () => {
+  const regole3: RegolePunteggio = { setAlMeglioDi: 3, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true }
+  it('instrada i perdenti delle semifinali nella finalina (tabelloneTipo terzo)', () => {
+    const tabellone: Match[] = [
+      { id: 's0', tournamentId: 't', fase: 'tabellone', round: 1, posizioneTabellone: 0, teamAId: 'A1', teamBId: 'B2', set: [{ puntiA: 21, puntiB: 10 }, { puntiA: 21, puntiB: 12 }], stato: 'conclusa', perdenteVerso: { matchId: 't3', slot: 'A' } },
+      { id: 's1', tournamentId: 't', fase: 'tabellone', round: 1, posizioneTabellone: 1, teamAId: 'B1', teamBId: 'A2', set: [{ puntiA: 15, puntiB: 21 }, { puntiA: 15, puntiB: 21 }], stato: 'conclusa', perdenteVerso: { matchId: 't3', slot: 'B' } },
+      { id: 'f', tournamentId: 't', fase: 'tabellone', round: 2, posizioneTabellone: 0, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
+      { id: 't3', tournamentId: 't', fase: 'tabellone', tabelloneTipo: 'terzo', round: 2, posizioneTabellone: 1, teamAId: null, teamBId: null, set: [], stato: 'programmata' },
+    ]
+    const out = propagaTabellone(tabellone, regole3)
+    const finalina = out.find((m) => m.id === 't3')!
+    expect(finalina.teamAId).toBe('B2') // perdente s0
+    expect(finalina.teamBId).toBe('B1') // perdente s1
+    const finale = out.find((m) => m.id === 'f')!
+    expect(finale.teamAId).toBe('A1') // vincente s0
+    expect(finale.teamBId).toBe('A2') // vincente s1
+  })
+})
+
 describe('propagaTabellone', () => {
   it('fa avanzare i vincitori al round successivo', () => {
     const semi1 = { ...tab('s1', 1, 0, 'A', 'B'), set: [{ puntiA: 21, puntiB: 15 }], vincitoreId: 'A', stato: 'conclusa' as const }

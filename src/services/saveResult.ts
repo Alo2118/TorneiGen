@@ -15,7 +15,7 @@ export async function salvaEProppaga(
   const regoleMatch = target.tabelloneTipo === 'golden' ? { ...regole, setAlMeglioDi: 1 as const } : regole
   const aggiornato = applicaRisultato(target, set, regoleMatch)
   const conRisultato = matches.map((m) => (m.id === matchId ? aggiornato : m))
-  const doppia = matches.some((m) => m.tabelloneTipo !== undefined)
+  const doppia = matches.some((m) => m.tabelloneTipo !== undefined && m.tabelloneTipo !== 'terzo')
   const finali = doppia ? propagaDoppia(conRisultato, regole) : propagaTabellone(conRisultato, regole)
   await db.matches.bulkPut(finali)
   void pubblicaSeAttivo(tournamentId)

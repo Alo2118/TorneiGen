@@ -15,6 +15,7 @@ export interface RegolePunteggio {
   puntiTieBreak: number
   vittoriaConDue: boolean
   cap?: number
+  gironiPerSet?: boolean
 }
 
 export interface Player {
@@ -39,6 +40,7 @@ export interface Group {
   tournamentId: string
   nome: string
   teamIds: string[]
+  tipo?: 'girone' | 'consolazione'
 }
 
 export interface SetScore {
@@ -60,7 +62,7 @@ export interface Match {
   stato: 'programmata' | 'in_corso' | 'conclusa'
   campo?: string
   orario?: string
-  tabelloneTipo?: 'vincenti' | 'perdenti' | 'finale' | 'golden'
+  tabelloneTipo?: 'vincenti' | 'perdenti' | 'finale' | 'golden' | 'terzo'
   vincitoreVerso?: { matchId: string; slot: 'A' | 'B' } | null
   perdenteVerso?: { matchId: string; slot: 'A' | 'B' } | null
 }
@@ -79,6 +81,8 @@ export interface Tournament {
   durataPartitaMin?: number
   faseFinale?: 'diretta' | 'doppia'
   qualificatiPerGirone?: number | 'tutti'
+  finaleTerzoPosto?: boolean
+  gironeConsolazione?: boolean
   pubblicato?: boolean
   orgVersion?: number
   orgPending?: boolean
@@ -104,7 +108,7 @@ export interface BracketMatch {
 
 export interface DoubleBracketMatch {
   id: string
-  tabelloneTipo: 'vincenti' | 'perdenti' | 'finale' | 'golden'
+  tabelloneTipo: 'vincenti' | 'perdenti' | 'finale' | 'golden' | 'terzo'
   round: number
   index: number
   teamAId: string | null

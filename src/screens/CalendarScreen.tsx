@@ -156,7 +156,7 @@ export function CalendarScreen() {
           titolo={`${nomeSquadra(matchInPunteggio.teamAId, teamNames)} vs ${nomeSquadra(matchInPunteggio.teamBId, teamNames)}`}
           onClose={() => setMatchInPunteggio(null)}
         >
-          <ScoreControl regole={torneo.regolePunteggio} setIniziali={matchInPunteggio.set} onSalva={handleSalvaPunteggio} />
+          <ScoreControl regole={torneo.regolePunteggio} setIniziali={matchInPunteggio.set} onSalva={handleSalvaPunteggio} tuttiISet={matchInPunteggio.fase === 'girone' && !!torneo.regolePunteggio.gironiPerSet} />
         </Modal>
       )}
     </section>

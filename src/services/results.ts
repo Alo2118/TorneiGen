@@ -1,8 +1,8 @@
 import type { Match, SetScore, RegolePunteggio } from '../engine/types'
-import { matchOutcome } from '../engine/matchOutcome'
+import { matchOutcome, esitoGirone } from '../engine/matchOutcome'
 
 export function applicaRisultato(match: Match, set: SetScore[], regole: RegolePunteggio): Match {
-  const o = matchOutcome(set, regole)
+  const o = match.fase === 'girone' && regole.gironiPerSet ? esitoGirone(set, regole) : matchOutcome(set, regole)
   const vincitoreId = o.vincitore === 'A' ? match.teamAId : o.vincitore === 'B' ? match.teamBId : null
   return {
     ...match,
@@ -47,6 +47,19 @@ export function propagaTabellone(matches: Match[], regole: RegolePunteggio): Mat
       if (idx % 2 === 0) succ.teamAId = vincitore
       else succ.teamBId = vincitore
     }
+  }
+
+  // Instradamento dei perdenti verso la finalina 3°/4° posto (tabelloneTipo 'terzo').
+  // Usato solo quando le semifinali hanno un perdenteVerso; single-elim normale è invariato.
+  for (const m of lista) {
+    if (!m.perdenteVerso) continue
+    const o = matchOutcome(m.set, regole)
+    if (!o.completa || o.vincitore == null) continue
+    const perdente = o.vincitore === 'A' ? m.teamBId : m.teamAId
+    const dest = lista.find((x) => x.id === m.perdenteVerso!.matchId)
+    if (!dest) continue
+    if (m.perdenteVerso.slot === 'A') dest.teamAId = perdente
+    else dest.teamBId = perdente
   }
 
   // ricompone: match non-tabellone invariati + tabellone aggiornato

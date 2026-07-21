@@ -1,5 +1,5 @@
-import type { Match, RegolePunteggio, StandingRow } from './types'
-import { matchOutcome } from './matchOutcome'
+import type { Match, RegolePunteggio, SetScore, StandingRow } from './types'
+import { matchOutcome, esitoGirone } from './matchOutcome'
 
 function rigaVuota(teamId: string): StandingRow {
   return {
@@ -21,6 +21,10 @@ export function computeStandings(
   const rows = new Map<string, StandingRow>()
   teamIds.forEach((id) => rows.set(id, rigaVuota(id)))
 
+  // In modalità "punti a set" ogni set vale 1 punto: si giocano sempre 3 set e
+  // la classifica è a set vinti. Altrimenti best-of-3 classico (partite vinte).
+  const esito = (sets: SetScore[]) => (r.gironiPerSet ? esitoGirone(sets, r) : matchOutcome(sets, r))
+
   const validi = matches.filter(
     (m) =>
       m.stato === 'conclusa' &&
@@ -29,7 +33,7 @@ export function computeStandings(
   )
 
   for (const m of validi) {
-    const o = matchOutcome(m.set, r)
+    const o = esito(m.set)
     if (!o.completa) continue
     const A = rows.get(m.teamAId as string)!
     const B = rows.get(m.teamBId as string)!
@@ -51,7 +55,7 @@ export function computeStandings(
         (mm.teamAId === y.teamId && mm.teamBId === x.teamId),
     )
     if (!m) return 0
-    const o = matchOutcome(m.set, r)
+    const o = esito(m.set)
     if (!o.completa) return 0
     const vincitoreId = o.vincitore === 'A' ? m.teamAId : m.teamBId
     if (vincitoreId === x.teamId) return -1
@@ -64,6 +68,14 @@ export function computeStandings(
   // non sono pienamente risolte da questo criterio: limitazione nota,
   // possibile evoluzione futura con la "classifica avulsa".
   return [...rows.values()].sort((a, b) => {
+    if (r.gironiPerSet) {
+      // ogni set = 1 punto: primo criterio i set vinti, poi il quoziente punti
+      if (b.setVinti !== a.setVinti) return b.setVinti - a.setVinti
+      const qpA = quoziente(a.puntiFatti, a.puntiSubiti)
+      const qpB = quoziente(b.puntiFatti, b.puntiSubiti)
+      if (qpB !== qpA) return qpB - qpA
+      return scontroDiretto(a, b)
+    }
     if (b.vinte !== a.vinte) return b.vinte - a.vinte
     const qsA = quoziente(a.setVinti, a.setPersi)
     const qsB = quoziente(b.setVinti, b.setPersi)

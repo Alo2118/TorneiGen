@@ -169,6 +169,35 @@ describe('SetupScreen', () => {
     expect(all[0].qualificatiPerGirone).toBe('tutti')
   })
 
+  it('il preset Formula 3-set attiva le tre opzioni e best-of-3', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tornei/nuovo']}>
+        <Routes>
+          <Route path="/tornei/nuovo" element={<SetupScreen />} />
+          <Route path="/tornei/:id/squadre" element={<div>squadre</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.type(screen.getByLabelText(/^nome$/i), 'Formula')
+    await userEvent.type(screen.getAllByLabelText(/^data$/i)[0], '2026-07-01')
+    await userEvent.selectOptions(screen.getByLabelText(/^formato$/i), 'gironi_eliminazione')
+
+    await userEvent.click(screen.getByRole('button', { name: /preset formula 3-set/i }))
+    expect(screen.getByLabelText(/classifica gironi a set/i)).toBeChecked()
+    expect(screen.getByLabelText(/finale 3.*4.*posto/i)).toBeChecked()
+    expect(screen.getByLabelText(/girone di consolazione/i)).toBeChecked()
+
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }))
+    expect(await screen.findByText('squadre')).toBeInTheDocument()
+
+    const all = await listTournaments()
+    expect(all[0].regolePunteggio.gironiPerSet).toBe(true)
+    expect(all[0].regolePunteggio.setAlMeglioDi).toBe(3)
+    expect(all[0].finaleTerzoPosto).toBe(true)
+    expect(all[0].gironeConsolazione).toBe(true)
+    expect(all[0].qualificatiPerGirone).toBe(2)
+  })
+
   it('reindirizza alla home se il torneo da modificare non esiste', async () => {
     render(
       <MemoryRouter initialEntries={['/tornei/does-not-exist/setup']}>
