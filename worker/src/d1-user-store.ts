@@ -39,6 +39,9 @@ export function d1UserStore(db: D1Like): UserStore {
     async abilita(id, societaId, abilitato) {
       await db.prepare('UPDATE utenti SET abilitato = ?, societa_id = ? WHERE id = ?').bind(abilitato ? 1 : 0, societaId, id).run()
     },
+    async elimina(id) {
+      await db.prepare('DELETE FROM utenti WHERE id = ?').bind(id).run()
+    },
     async elenco() {
       const r = await db.prepare(`SELECT ${cols} FROM utenti ORDER BY creato_il DESC`).all<UtenteRecord>()
       return r.results ?? []

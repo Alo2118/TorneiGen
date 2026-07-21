@@ -62,6 +62,7 @@ export interface RegistrationsClient {
   elencoSocieta(): Promise<Societa[]>
   creaSocieta(nome: string): Promise<Societa>
   abilitaUtente(id: string, societaId: string): Promise<void>
+  eliminaUtente(id: string): Promise<void>
 }
 
 export function creaClient(config: { baseUrl: string; sessione?: string }): RegistrationsClient {
@@ -140,6 +141,9 @@ export function creaClient(config: { baseUrl: string; sessione?: string }): Regi
     creaSocieta: (nome) => call('POST', '/api/admin/societa', { body: { nome }, sessione: true }) as Promise<Societa>,
     async abilitaUtente(id, societaId) {
       await call('POST', `/api/admin/utenti/${id}/abilita`, { body: { societaId }, sessione: true })
+    },
+    async eliminaUtente(id) {
+      await call('DELETE', `/api/admin/utenti/${id}`, { sessione: true })
     },
     async deleteOrg(codice) {
       const res = await fetch(`${base}/api/org/${codice}`, { method: 'DELETE', headers: headerW() })

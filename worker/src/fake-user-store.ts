@@ -19,6 +19,9 @@ export function fakeUserStore(seed?: UtenteRecord[]): UserStore {
       const r = m.get(id)
       if (r) m.set(id, { ...r, societa_id: societaId, abilitato: abilitato ? 1 : 0 })
     },
+    async elimina(id) {
+      m.delete(id)
+    },
     async elenco() {
       return [...m.values()].map((r) => ({ ...r }))
     },

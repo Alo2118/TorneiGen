@@ -52,6 +52,17 @@ describe('registrations-api', () => {
     expect(r).toHaveLength(1)
   })
 
+  it('eliminaUtente chiama DELETE /api/admin/utenti/:id con la sessione', async () => {
+    const f = mockFetch(200, { ok: true })
+    vi.stubGlobal('fetch', f)
+    await client().eliminaUtente('u1')
+    const call0 = f.mock.calls[0] as unknown[]
+    expect(call0[0]).toBe('http://api.test/api/admin/utenti/u1')
+    const opts = call0[1] as RequestInit
+    expect(opts.method).toBe('DELETE')
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer sess-xyz')
+  })
+
   it('elencoOrg chiama GET /api/org con la sessione e ritorna i tornei', async () => {
     const f = mockFetch(200, { tornei: [{ codice: 'AAA', nome: 'Coppa', tipologia: '2x2', data: '2026-07-20', updatedAt: 't' }] })
     vi.stubGlobal('fetch', f)

@@ -19,12 +19,19 @@ function renderScreen() {
   )
 }
 
-function stubFetch(extra: { abilitaChiamata?: (id: string, body: unknown) => void } = {}) {
+function stubFetch(
+  extra: { abilitaChiamata?: (id: string, body: unknown) => void; eliminaChiamata?: (id: string) => void } = {},
+) {
   return vi.fn(async (url: string, opts?: RequestInit) => {
     const u = String(url)
     const match = u.match(/\/api\/admin\/utenti\/([^/]+)\/abilita$/)
     if (match) {
       extra.abilitaChiamata?.(match[1], opts?.body ? JSON.parse(opts.body as string) : undefined)
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+    const del = u.match(/\/api\/admin\/utenti\/([^/]+)$/)
+    if (del && opts?.method === 'DELETE') {
+      extra.eliminaChiamata?.(del[1])
       return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
     }
     if (u.includes('/api/admin/utenti')) {
@@ -91,5 +98,27 @@ describe('AdminScreen', () => {
     await userEvent.click(within(riga).getByRole('button', { name: /abilita/i }))
 
     expect(abilitaChiamata).toHaveBeenCalledWith('u1', { societaId: 's1' })
+  })
+
+  it('click su "Elimina" (con conferma) chiama la DELETE per quell\'utente', async () => {
+    vi.mocked(utenteCorrente).mockResolvedValue({ email: 'admin@x.it', ruolo: 'admin', societaId: null })
+    vi.stubGlobal('confirm', vi.fn(() => true))
+    const eliminaChiamata = vi.fn()
+    vi.stubGlobal('fetch', stubFetch({ eliminaChiamata }))
+    renderScreen()
+
+    const riga = (await screen.findByText('pippo@x.it')).closest('li') as HTMLElement
+    await userEvent.click(within(riga).getByRole('button', { name: /elimina/i }))
+
+    expect(eliminaChiamata).toHaveBeenCalledWith('u1')
+  })
+
+  it('l\'admin non vede "Elimina" sulla propria riga (anti-lockout)', async () => {
+    vi.mocked(utenteCorrente).mockResolvedValue({ email: 'admin@x.it', ruolo: 'admin', societaId: null })
+    vi.stubGlobal('fetch', stubFetch())
+    renderScreen()
+
+    const rigaAdmin = (await screen.findByText('admin@x.it')).closest('li') as HTMLElement
+    expect(within(rigaAdmin).queryByRole('button', { name: /elimina/i })).toBeNull()
   })
 })

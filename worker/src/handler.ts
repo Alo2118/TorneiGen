@@ -42,6 +42,7 @@ export interface UserStore {
   perId(id: string): Promise<UtenteRecord | null>
   crea(u: UtenteRecord): Promise<void>
   abilita(id: string, societaId: string, abilitato: boolean): Promise<void>
+  elimina(id: string): Promise<void>
   elenco(): Promise<UtenteRecord[]>
 }
 
@@ -205,6 +206,16 @@ export async function handle(req: Request, env: Env): Promise<Response> {
     if (!societaId) return json({ error: 'società mancante' }, 400)
     const abilitato = b.abilitato === undefined ? true : Boolean(b.abilitato)
     await env.USERS.abilita(p3, societaId, abilitato)
+    return json({ ok: true })
+  }
+
+  // DELETE /api/admin/utenti/:id
+  if (req.method === 'DELETE' && p1 === 'admin' && p2 === 'utenti' && p3 && !parts[4]) {
+    const g = await guardiaAdmin(req, env)
+    if (g instanceof Response) return g
+    // Anti-lockout: un admin non può eliminare il proprio account.
+    if (p3 === g.sub) return json({ error: 'non puoi eliminare te stesso' }, 400)
+    await env.USERS.elimina(p3)
     return json({ ok: true })
   }
 

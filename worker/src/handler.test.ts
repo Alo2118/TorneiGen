@@ -663,5 +663,33 @@ describe('handle', () => {
       const r = await handle(req('POST', '/api/admin/utenti/u-2/abilita', { headers: await authAdmin(), body: {} }), env())
       expect(r.status).toBe(400)
     })
+
+    it('DELETE /api/admin/utenti/:id come admin elimina l\'utente', async () => {
+      const u = await utenteInAttesa()
+      const e = env(undefined, undefined, [u])
+      const r = await handle(req('DELETE', `/api/admin/utenti/${u.id}`, { headers: await authAdmin() }), e)
+      expect(r.status).toBe(200)
+      expect(await e.USERS.perId(u.id)).toBeNull()
+    })
+
+    it('DELETE /api/admin/utenti/:id con token utente non admin -> 403', async () => {
+      const u = await utenteInAttesa()
+      const e = env(undefined, undefined, [u])
+      const r = await handle(req('DELETE', `/api/admin/utenti/${u.id}`, { headers: await authUtente() }), e)
+      expect(r.status).toBe(403)
+      expect(await e.USERS.perId(u.id)).not.toBeNull()
+    })
+
+    it('DELETE /api/admin/utenti/:id senza token -> 401', async () => {
+      const r = await handle(req('DELETE', '/api/admin/utenti/u-2'), env())
+      expect(r.status).toBe(401)
+    })
+
+    it('DELETE /api/admin/utenti/:id di se stesso -> 400 (anti-lockout)', async () => {
+      // tokenAdmin ha sub 'admin-1'
+      const r = await handle(req('DELETE', '/api/admin/utenti/admin-1', { headers: await authAdmin() }), env())
+      expect(r.status).toBe(400)
+      expect((await r.json()).error).toMatch(/te stesso/i)
+    })
   })
 })

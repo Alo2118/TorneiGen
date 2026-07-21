@@ -11,6 +11,7 @@ const STATO_LABEL: Record<'utente' | 'admin', string> = { utente: 'Utente', admi
 export function AdminScreen() {
   const [verificando, setVerificando] = useState(true)
   const [ammesso, setAmmesso] = useState(false)
+  const [ioEmail, setIoEmail] = useState<string | null>(null)
 
   const [utenti, setUtenti] = useState<UtenteAmministrato[] | null>(null)
   const [societa, setSocieta] = useState<Societa[] | null>(null)
@@ -23,6 +24,7 @@ export function AdminScreen() {
     utenteCorrente().then((u) => {
       if (cancellato) return
       setAmmesso(u?.ruolo === 'admin')
+      setIoEmail(u?.email ?? null)
       setVerificando(false)
     })
     return () => {
@@ -67,6 +69,17 @@ export function AdminScreen() {
     setErrore(null)
     try {
       await getClient().abilitaUtente(utenteId, societaId)
+      await carica()
+    } catch (err) {
+      setErrore(err instanceof Error ? err.message : 'Errore imprevisto')
+    }
+  }
+
+  async function handleElimina(utenteId: string, email: string) {
+    if (!window.confirm(`Eliminare definitivamente l'utente ${email}?`)) return
+    setErrore(null)
+    try {
+      await getClient().eliminaUtente(utenteId)
       await carica()
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore imprevisto')
@@ -121,7 +134,14 @@ export function AdminScreen() {
         {utenti && utenti.length > 0 && (
           <ul className="registrations-import-list">
             {utenti.map((u) => (
-              <UtenteRiga key={u.id} utente={u} societaList={societa ?? []} onAbilita={handleAbilita} />
+              <UtenteRiga
+                key={u.id}
+                utente={u}
+                societaList={societa ?? []}
+                onAbilita={handleAbilita}
+                onElimina={handleElimina}
+                eliminabile={u.email !== ioEmail}
+              />
             ))}
           </ul>
         )}
@@ -134,10 +154,14 @@ function UtenteRiga({
   utente,
   societaList,
   onAbilita,
+  onElimina,
+  eliminabile,
 }: {
   utente: UtenteAmministrato
   societaList: Societa[]
   onAbilita: (utenteId: string, societaId: string) => Promise<void>
+  onElimina: (utenteId: string, email: string) => Promise<void>
+  eliminabile: boolean
 }) {
   const [scelta, setScelta] = useState('')
   const [nuova, setNuova] = useState('')
@@ -203,6 +227,14 @@ function UtenteRiga({
           />
           <Button onClick={abilita} disabled={inviando || (!scelta && !nuova.trim())}>
             Abilita
+          </Button>
+        </div>
+      )}
+
+      {eliminabile && (
+        <div className="registrations-actions">
+          <Button variant="ghost" onClick={() => void onElimina(utente.id, utente.email)}>
+            Elimina
           </Button>
         </div>
       )}
