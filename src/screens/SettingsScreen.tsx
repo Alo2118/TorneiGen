@@ -117,6 +117,8 @@ export function SettingsScreen() {
           </p>
         )}
       </form>
+
+      <footer className="app-credit">© 2026 Alo · TorneiGen</footer>
     </section>
   )
 }

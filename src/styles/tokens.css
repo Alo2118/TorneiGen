@@ -860,3 +860,12 @@ button.match-box:hover { border-color: var(--sea); }
 .sync-stato-ok { color: var(--win); border-color: color-mix(in srgb, var(--win) 40%, var(--line)); }
 .sync-stato-avviso { color: var(--sea); border-color: var(--sea); }
 .sync-stato-conflitto { color: var(--sand); border-color: var(--sand); }
+
+.app-credit {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
+  color: var(--muted);
+  font-size: .8rem;
+  text-align: center;
+}
