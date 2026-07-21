@@ -38,9 +38,27 @@ describe('RegistrationScreen', () => {
     await userEvent.type(screen.getByLabelText(/^email$/i, { selector: '#p1-email' }), 'bruno@example.com')
     await userEvent.type(screen.getByLabelText(/^telefono$/i, { selector: '#p1-telefono' }), '3334445555')
 
+    await userEvent.click(screen.getByLabelText(/acconsento al trattamento/i))
     await userEvent.click(screen.getByRole('button', { name: /invia iscrizione/i }))
 
     expect(await screen.findByText(/grazie|inviata|confermata/i)).toBeInTheDocument()
+  })
+
+  it('non si può inviare senza accettare l\'informativa sui dati', async () => {
+    vi.stubGlobal('fetch', fetchSeq([{ status: 200, body: riepilogo }]))
+    render(
+      <MemoryRouter initialEntries={['/iscrizione/ABC']}>
+        <Routes><Route path="/iscrizione/:codice" element={<RegistrationScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText(/Coppa Estate/i)).toBeInTheDocument()
+    // l'informativa e il contatto sono visibili
+    expect(screen.getByText(/accedere ai tuoi dati o di cancellarli/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /nicola\.hdr@gmail\.com/i })).toBeInTheDocument()
+    // il pulsante è disabilitato finché non si accetta
+    expect(screen.getByRole('button', { name: /invia iscrizione/i })).toBeDisabled()
+    await userEvent.click(screen.getByLabelText(/acconsento al trattamento/i))
+    expect(screen.getByRole('button', { name: /invia iscrizione/i })).toBeEnabled()
   })
 
   it('nel 2x2 il nome squadra è facoltativo: si può inviare senza compilarlo', async () => {
@@ -64,6 +82,7 @@ describe('RegistrationScreen', () => {
     await userEvent.type(screen.getByLabelText(/^email$/i, { selector: '#p1-email' }), 'bruno@example.com')
     await userEvent.type(screen.getByLabelText(/^telefono$/i, { selector: '#p1-telefono' }), '3334445555')
 
+    await userEvent.click(screen.getByLabelText(/acconsento al trattamento/i))
     await userEvent.click(screen.getByRole('button', { name: /invia iscrizione/i }))
 
     expect(await screen.findByText(/grazie|inviata|confermata/i)).toBeInTheDocument()

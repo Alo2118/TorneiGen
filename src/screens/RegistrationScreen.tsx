@@ -24,6 +24,7 @@ export function RegistrationScreen() {
   const [errore, setErrore] = useState<string | null>(null)
   const [inviando, setInviando] = useState(false)
   const [inviata, setInviata] = useState(false)
+  const [consenso, setConsenso] = useState(false)
 
   useEffect(() => {
     let attivo = true
@@ -79,6 +80,10 @@ export function RegistrationScreen() {
     const messaggio = validaSquadra(team, riepilogo.tipologia)
     if (messaggio) {
       setErrore(messaggio)
+      return
+    }
+    if (!consenso) {
+      setErrore('Per inviare l\'iscrizione devi accettare l\'informativa sul trattamento dei dati.')
       return
     }
     setErrore(null)
@@ -206,6 +211,26 @@ export function RegistrationScreen() {
           </Button>
         )}
 
+        <div className="privacy-notice">
+          <p className="muted">
+            I dati inseriti (nome, cognome, email, telefono) sono raccolti dall'organizzatore al
+            solo scopo di gestire l'iscrizione e lo svolgimento del torneo. Non sono usati per altri
+            fini né ceduti a terzi. Puoi chiedere in qualsiasi momento di accedere ai tuoi dati o di
+            cancellarli scrivendo a <a href="mailto:nicola.hdr@gmail.com">nicola.hdr@gmail.com</a>.
+          </p>
+          <label className="field field-checkbox">
+            <input
+              type="checkbox"
+              className="field-input"
+              checked={consenso}
+              onChange={(e) => setConsenso(e.target.checked)}
+            />
+            <span className="field-label">
+              Ho letto l'informativa e acconsento al trattamento dei miei dati per la gestione del torneo.
+            </span>
+          </label>
+        </div>
+
         {errore && (
           <p className="field-error" role="alert">
             {errore}
@@ -213,7 +238,7 @@ export function RegistrationScreen() {
         )}
 
         <div className="registration-form-actions">
-          <Button type="submit" disabled={inviando}>
+          <Button type="submit" disabled={inviando || !consenso}>
             {inviando ? 'Invio in corso…' : 'Invia iscrizione'}
           </Button>
         </div>

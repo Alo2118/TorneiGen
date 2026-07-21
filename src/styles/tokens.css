@@ -869,3 +869,14 @@ button.match-box:hover { border-color: var(--sea); }
   font-size: .8rem;
   text-align: center;
 }
+
+.privacy-notice {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--muted) 25%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--muted) 6%, var(--surface));
+  display: grid;
+  gap: 10px;
+}
+.privacy-notice .muted { font-size: .8rem; line-height: 1.4; }
