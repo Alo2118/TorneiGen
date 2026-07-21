@@ -25,4 +25,21 @@ describe('GironeStandings', () => {
     const { container } = render(<GironeStandings group={group} matches={matches} regole={regole} teamNames={names} qualificati="tutti" />)
     expect(container.querySelectorAll('.standings-row-qualificata').length).toBe(3)
   })
+
+  it('con gironiPerSet mostra la colonna Set V–P (set vinti–persi) invece delle partite', () => {
+    const regoleSet: RegolePunteggio = { setAlMeglioDi: 3, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true, gironiPerSet: true }
+    const set3 = (id: string, a: string, b: string): Match => ({
+      id, tournamentId: 't', fase: 'girone', groupId: 'g', round: 1, teamAId: a, teamBId: b,
+      set: [{ puntiA: 21, puntiB: 10 }, { puntiA: 10, puntiB: 21 }, { puntiA: 15, puntiB: 5 }], stato: 'conclusa', vincitoreId: a,
+    })
+    const m = [set3('m1', 'A', 'B'), set3('m2', 'A', 'C'), set3('m3', 'B', 'C')]
+    const { getByText, queryByText, container } = render(
+      <GironeStandings group={group} matches={m} regole={regoleSet} teamNames={names} qualificati="tutti" />,
+    )
+    expect(getByText('Set V–P')).toBeTruthy()
+    expect(queryByText('Quoz. set')).toBeNull()
+    // A vince entrambe 2-1 → 4 set vinti, 2 persi
+    const primaRiga = container.querySelector('tbody tr')!
+    expect(primaRiga.textContent).toContain('4–2')
+  })
 })

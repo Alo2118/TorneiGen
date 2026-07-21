@@ -17,6 +17,9 @@ function quoziente(fatti: number, subiti: number): string {
 export function GironeStandings({ group, matches, regole, teamNames, qualificati }: Props) {
   const righe = classificaGirone(group, matches, regole)
   const soglia = qualificati === 'tutti' ? righe.length : qualificati
+  // Con la formula a set ogni set vale 1 punto: la colonna principale mostra
+  // i set vinti–persi (non le partite) e lo spareggio è il quoziente punti.
+  const perSet = !!regole.gironiPerSet
 
   return (
     <section className="standings-group">
@@ -28,8 +31,8 @@ export function GironeStandings({ group, matches, regole, teamNames, qualificati
               <th className="tnum">#</th>
               <th>Squadra</th>
               <th className="tnum">G</th>
-              <th className="tnum">V–P</th>
-              <th className="tnum">Quoz. set</th>
+              <th className="tnum">{perSet ? 'Set V–P' : 'V–P'}</th>
+              {!perSet && <th className="tnum">Quoz. set</th>}
               <th className="tnum">Quoz. punti</th>
             </tr>
           </thead>
@@ -45,8 +48,8 @@ export function GironeStandings({ group, matches, regole, teamNames, qualificati
                   <td className="tnum">{i + 1}</td>
                   <td>{teamNames[r.teamId] ?? r.teamId}</td>
                   <td className="tnum">{r.giocate}</td>
-                  <td className="tnum">{r.vinte}–{r.perse}</td>
-                  <td className="tnum">{quoziente(r.setVinti, r.setPersi)}</td>
+                  <td className="tnum">{perSet ? `${r.setVinti}–${r.setPersi}` : `${r.vinte}–${r.perse}`}</td>
+                  {!perSet && <td className="tnum">{quoziente(r.setVinti, r.setPersi)}</td>}
                   <td className="tnum">{quoziente(r.puntiFatti, r.puntiSubiti)}</td>
                 </tr>
               )
