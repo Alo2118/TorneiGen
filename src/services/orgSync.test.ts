@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { db } from '../db/database'
 import { saveTournament, getTournament, matchesOf } from '../db/repositories'
-import { spingiOrg, tiraOrg, risolviConflittoUsaCloud, risolviConflittoSovrascrivi, sincronizzabile } from './orgSync'
+import { spingiOrg, tiraOrg, risolviConflittoUsaCloud, risolviConflittoSovrascrivi, sincronizzabile, confrontaCloud } from './orgSync'
 import { buildOrgDoc } from './orgDoc'
 import type { RegistrationsClient } from './registrations-api'
 import type { OrgRecord } from '../types/org'
@@ -171,5 +171,40 @@ describe('risoluzione conflitti', () => {
     const t = await getTournament('t1')
     expect(t?.orgVersion).toBe(5)
     expect(t?.orgPending).toBe(false)
+  })
+})
+
+describe('confrontaCloud', () => {
+  const orgRec = (version: number): OrgRecord => ({ codice: 'ABC123', doc: '{}', version, updatedAt: '' })
+  afterEach(() => localStorage.removeItem('sessione'))
+
+  it('senza sessione -> offline', async () => {
+    localStorage.removeItem('sessione')
+    expect((await confrontaCloud('t1')).stato).toBe('offline')
+  })
+
+  it('cloud più recente e nessuna modifica locale -> cloud_avanti', async () => {
+    localStorage.setItem('sessione', 'x')
+    await saveTournament({ ...torneo, orgVersion: 2, orgPending: false })
+    const r = await confrontaCloud('t1', fakeClient({ getOrg: async () => orgRec(5) }))
+    expect(r).toEqual({ stato: 'cloud_avanti', versioneCloud: 5 })
+  })
+
+  it('cloud più recente ma anche modifiche locali -> conflitto', async () => {
+    localStorage.setItem('sessione', 'x')
+    await saveTournament({ ...torneo, orgVersion: 2, orgPending: true })
+    expect((await confrontaCloud('t1', fakeClient({ getOrg: async () => orgRec(5) }))).stato).toBe('conflitto')
+  })
+
+  it('stessa versione senza pending -> inpari', async () => {
+    localStorage.setItem('sessione', 'x')
+    await saveTournament({ ...torneo, orgVersion: 5, orgPending: false })
+    expect((await confrontaCloud('t1', fakeClient({ getOrg: async () => orgRec(5) }))).stato).toBe('inpari')
+  })
+
+  it('modifiche locali non ancora inviate -> locale_pendente', async () => {
+    localStorage.setItem('sessione', 'x')
+    await saveTournament({ ...torneo, orgVersion: 5, orgPending: true })
+    expect((await confrontaCloud('t1', fakeClient({ getOrg: async () => orgRec(5) }))).stato).toBe('locale_pendente')
   })
 })

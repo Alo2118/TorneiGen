@@ -5,6 +5,7 @@ import { getTournament } from '../db/repositories'
 import { exportBackup } from '../db/backup'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
+import { SyncStato } from '../components/SyncStato'
 import { utenteCorrente } from '../services/auth'
 
 const SEZIONI = [
@@ -103,6 +104,7 @@ export function AppShell() {
               </div>
             </div>
             <div className="tourn-header-actions">
+              <SyncStato tournamentId={torneo.id} />
               <Button variant="ghost" onClick={() => navigate(`/tornei/${torneo.id}/setup`)}>
                 Modifica
               </Button>

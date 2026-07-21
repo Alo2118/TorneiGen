@@ -19,6 +19,40 @@ export function sincronizzabile(): boolean {
   return true
 }
 
+export type EsitoConfronto =
+  | 'offline' // non sincronizzabile (offline o senza login)
+  | 'inpari' // locale e cloud allineati
+  | 'cloud_avanti' // il cloud ha una versione più recente: si può aggiornare
+  | 'locale_pendente' // ci sono modifiche locali non ancora sul cloud
+  | 'conflitto' // sia locale sia cloud sono cambiati
+  | 'errore'
+
+/**
+ * Confronta lo stato locale col cloud SENZA applicare nulla (solo diagnosi),
+ * per segnalare all'utente se ci sono aggiornamenti da tirare o modifiche da inviare.
+ */
+export async function confrontaCloud(
+  tournamentId: string,
+  client: RegistrationsClient = getClient(),
+): Promise<{ stato: EsitoConfronto; versioneCloud?: number }> {
+  if (!sincronizzabile()) return { stato: 'offline' }
+  const t = await getTournament(tournamentId)
+  if (!t) return { stato: 'errore' }
+  let record
+  try {
+    record = await client.getOrg(t.codiceIscrizione)
+  } catch {
+    return { stato: 'errore' }
+  }
+  const locale = t.orgVersion ?? 0
+  if (!record) return { stato: t.orgPending ? 'locale_pendente' : 'inpari' }
+  if (record.version > locale) {
+    return { stato: t.orgPending ? 'conflitto' : 'cloud_avanti', versioneCloud: record.version }
+  }
+  if (record.version < locale || t.orgPending) return { stato: 'locale_pendente', versioneCloud: record.version }
+  return { stato: 'inpari', versioneCloud: record.version }
+}
+
 // Helper privato: push del documento con una versione-base esplicita.
 async function eseguiPush(
   tournamentId: string,

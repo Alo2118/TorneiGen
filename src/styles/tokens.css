@@ -854,3 +854,9 @@ button.match-box:hover { border-color: var(--sea); }
 .girone-col-head h2 { margin: 0; font-size: 1rem; }
 .girone-chip { border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; margin-bottom: 6px; background: var(--paper); cursor: grab; user-select: none; touch-action: none; }
 .girone-chip:active, .girone-chip-trascina { cursor: grabbing; border-color: var(--sea); box-shadow: 0 2px 8px rgba(14,154,167,0.25); }
+
+/* --- Stato sincronizzazione (header torneo) --- */
+.sync-stato { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.sync-stato-ok { color: var(--win); border-color: color-mix(in srgb, var(--win) 40%, var(--line)); }
+.sync-stato-avviso { color: var(--sea); border-color: var(--sea); }
+.sync-stato-conflitto { color: var(--sand); border-color: var(--sand); }
