@@ -89,6 +89,43 @@ describe('generaFaseFinale', () => {
     expect([...idsT1].some((id) => idsT2.has(id))).toBe(false)
   })
 
+  async function seed7(over: Partial<Tournament> = {}) {
+    await saveTournament(torneo({ faseFinale: 'diretta', qualificatiPerGirone: 2, finaleTerzoPosto: true, gironeConsolazione: true, ...over }))
+    await db.teams.bulkPut(['a1', 'a2', 'a3', 'a4', 'b1', 'b2', 'b3'].map(team))
+    await db.groups.bulkPut([girone('g1', ['a1', 'a2', 'a3', 'a4']), girone('g2', ['b1', 'b2', 'b3'])])
+    const w = (id: string, g: string, a: string, b: string) => matchGirone(id, g, a, b, 21, 10)
+    await db.matches.bulkPut([
+      // Girone A: a1 > a2 > a3 > a4
+      w('a12', 'g1', 'a1', 'a2'), w('a13', 'g1', 'a1', 'a3'), w('a14', 'g1', 'a1', 'a4'),
+      w('a23', 'g1', 'a2', 'a3'), w('a24', 'g1', 'a2', 'a4'), w('a34', 'g1', 'a3', 'a4'),
+      // Girone B: b1 > b2 > b3
+      w('b12', 'g2', 'b1', 'b2'), w('b13', 'g2', 'b1', 'b3'), w('b23', 'g2', 'b2', 'b3'),
+    ])
+  }
+
+  it('genera finalina 3°/4° e girone di consolazione a 3 con 7 squadre (gironi 4+3)', async () => {
+    await seed7()
+    await generaFaseFinale('t1')
+    const groups = await db.groups.where('tournamentId').equals('t1').toArray()
+    const cons = groups.find((g) => g.tipo === 'consolazione')!
+    expect(cons).toBeTruthy()
+    expect(new Set(cons.teamIds)).toEqual(new Set(['a3', 'a4', 'b3'])) // i non qualificati
+    const all = await db.matches.where('tournamentId').equals('t1').toArray()
+    const consMatches = all.filter((m) => m.groupId === cons.id)
+    expect(consMatches).toHaveLength(3) // round-robin sola andata di 3 squadre
+    expect(all.some((m) => m.tabelloneTipo === 'terzo')).toBe(true)
+  })
+
+  it('la precondizione ignora i match del girone di consolazione (rigenerazione ok)', async () => {
+    await seed7()
+    await generaFaseFinale('t1') // crea la consolazione (match 'programmata')
+    // rigenerare NON deve lanciare per via dei match consolazione non conclusi
+    await expect(generaFaseFinale('t1')).resolves.toBeGreaterThan(0)
+    const groups = await db.groups.where('tournamentId').equals('t1').toArray()
+    // niente duplicati: un solo girone di consolazione
+    expect(groups.filter((g) => g.tipo === 'consolazione')).toHaveLength(1)
+  })
+
   it('doppia con qualificati non potenza di 2 → errore', async () => {
     // 3 gironi con 1 qualificato ciascuno = 3 (non potenza di 2). Qui: 1 qualificato per girone su 2 gironi = 2 (pow2), quindi forziamo 1 girone con dispari.
     await saveTournament(torneo({ faseFinale: 'doppia', qualificatiPerGirone: 1 }))

@@ -40,6 +40,7 @@ export interface Group {
   tournamentId: string
   nome: string
   teamIds: string[]
+  tipo?: 'girone' | 'consolazione'
 }
 
 export interface SetScore {
@@ -80,6 +81,8 @@ export interface Tournament {
   durataPartitaMin?: number
   faseFinale?: 'diretta' | 'doppia'
   qualificatiPerGirone?: number | 'tutti'
+  finaleTerzoPosto?: boolean
+  gironeConsolazione?: boolean
   pubblicato?: boolean
   orgVersion?: number
   orgPending?: boolean
