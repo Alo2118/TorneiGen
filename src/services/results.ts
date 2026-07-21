@@ -1,8 +1,8 @@
 import type { Match, SetScore, RegolePunteggio } from '../engine/types'
-import { matchOutcome } from '../engine/matchOutcome'
+import { matchOutcome, esitoGirone } from '../engine/matchOutcome'
 
 export function applicaRisultato(match: Match, set: SetScore[], regole: RegolePunteggio): Match {
-  const o = matchOutcome(set, regole)
+  const o = match.fase === 'girone' && regole.gironiPerSet ? esitoGirone(set) : matchOutcome(set, regole)
   const vincitoreId = o.vincitore === 'A' ? match.teamAId : o.vincitore === 'B' ? match.teamBId : null
   return {
     ...match,

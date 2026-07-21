@@ -15,6 +15,7 @@ export interface RegolePunteggio {
   puntiTieBreak: number
   vittoriaConDue: boolean
   cap?: number
+  gironiPerSet?: boolean
 }
 
 export interface Player {

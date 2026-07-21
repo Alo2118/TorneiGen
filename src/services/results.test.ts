@@ -25,6 +25,26 @@ describe('applicaRisultato', () => {
   })
 })
 
+describe('applicaRisultato con gironiPerSet', () => {
+  const regoleSet: RegolePunteggio = { setAlMeglioDi: 3, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true, gironiPerSet: true }
+  const matchBase = (fase: Match['fase']): Match => ({
+    id: 'm', tournamentId: 't', fase, round: 1, teamAId: 'a', teamBId: 'b', set: [], stato: 'programmata',
+  })
+  const set3 = [{ puntiA: 21, puntiB: 15 }, { puntiA: 10, puntiB: 21 }, { puntiA: 15, puntiB: 12 }]
+
+  it('girone: conclusa solo con 3 set', () => {
+    const parziale = applicaRisultato(matchBase('girone'), set3.slice(0, 2), regoleSet)
+    expect(parziale.stato).toBe('in_corso')
+    const pieno = applicaRisultato(matchBase('girone'), set3, regoleSet)
+    expect(pieno.stato).toBe('conclusa')
+    expect(pieno.vincitoreId).toBe('a')
+  })
+  it('tabellone: resta best-of-3 (2-0 è già conclusa) anche con gironiPerSet', () => {
+    const m = applicaRisultato(matchBase('tabellone'), [{ puntiA: 21, puntiB: 10 }, { puntiA: 21, puntiB: 12 }], regoleSet)
+    expect(m.stato).toBe('conclusa')
+  })
+})
+
 describe('propagaTabellone', () => {
   it('fa avanzare i vincitori al round successivo', () => {
     const semi1 = { ...tab('s1', 1, 0, 'A', 'B'), set: [{ puntiA: 21, puntiB: 15 }], vincitoreId: 'A', stato: 'conclusa' as const }

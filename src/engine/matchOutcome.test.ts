@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { setWinner, matchOutcome } from './matchOutcome'
+import { setWinner, matchOutcome, esitoGirone } from './matchOutcome'
 import type { RegolePunteggio } from './types'
 
 const bo1: RegolePunteggio = { setAlMeglioDi: 1, puntiSet: 21, puntiTieBreak: 15, vittoriaConDue: true }
@@ -41,5 +41,24 @@ describe('matchOutcome', () => {
     const o = matchOutcome([{ puntiA: 21, puntiB: 10 }], bo3)
     expect(o.completa).toBe(false)
     expect(o.vincitore).toBe(null)
+  })
+})
+
+describe('esitoGirone (sempre 3 set)', () => {
+  const s = (a: number, b: number) => ({ puntiA: a, puntiB: b })
+  it('non è completa con meno di 3 set validi', () => {
+    expect(esitoGirone([s(21, 15), s(21, 10)]).completa).toBe(false)
+  })
+  it('con 3 set: 2-1 conta i set e assegna il vincitore', () => {
+    const o = esitoGirone([s(21, 15), s(10, 21), s(15, 12)])
+    expect(o).toEqual({ vincitore: 'A', setA: 2, setB: 1, completa: true })
+  })
+  it('3-0 valido', () => {
+    const o = esitoGirone([s(21, 5), s(21, 9), s(15, 3)])
+    expect(o).toEqual({ vincitore: 'A', setA: 3, setB: 0, completa: true })
+  })
+  it('il terzo set usa il target 15 (tie-break): 14-12 non è ancora set valido', () => {
+    const o = esitoGirone([s(21, 15), s(10, 21), s(14, 12)])
+    expect(o.completa).toBe(false)
   })
 })
