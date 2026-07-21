@@ -18,8 +18,9 @@ function fakeD1(rowByCodice: Record<string, OrgRecord> = {}) {
         async run() {
           throw new Error('fakeD1: run() senza bind() non supportato in questo test')
         },
-        async all() {
-          throw new Error('fakeD1: all() senza bind() non supportato in questo test')
+        async all<T>() {
+          calls.push({ sql, binds: [] })
+          return { results: [] as T[] }
         },
         bind(...binds: unknown[]) {
           calls.push({ sql, binds })
@@ -94,5 +95,22 @@ describe('d1OrgStore', () => {
     await store.put({ codice: 'GHI', doc: '{}', version: 1, updatedAt: 't1', societaId: null })
     const row2 = await store.get('GHI')
     expect(row2?.societaId).toBeNull()
+  })
+
+  it('elenco(null) seleziona tutte le organizzazioni, senza WHERE', async () => {
+    const db = fakeD1()
+    await d1OrgStore(db).elenco(null)
+    const c = db.calls.at(-1)!
+    expect(c.sql).toMatch(/select .* from organizzazioni\s*$/i)
+    expect(c.sql).not.toMatch(/where/i)
+    expect(c.binds).toEqual([])
+  })
+
+  it('elenco(societaId) filtra per societa_id col bind giusto (no leak cross-società)', async () => {
+    const db = fakeD1()
+    await d1OrgStore(db).elenco('s1')
+    const c = db.calls.at(-1)!
+    expect(c.sql).toMatch(/where societa_id = \?/i)
+    expect(c.binds).toEqual(['s1'])
   })
 })

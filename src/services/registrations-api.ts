@@ -34,6 +34,14 @@ export interface Societa {
   creato_il: string
 }
 
+export interface TorneoCloud {
+  codice: string
+  nome: string
+  tipologia?: string
+  data?: string
+  updatedAt: string
+}
+
 export interface RegistrationsClient {
   getRiepilogo(codice: string): Promise<Riepilogo>
   pubblicaRiepilogo(r: Riepilogo): Promise<Riepilogo>
@@ -44,6 +52,7 @@ export interface RegistrationsClient {
   getSnapshot(codice: string): Promise<PublicSnapshot>
   rimuoviSnapshot(codice: string): Promise<void>
   getOrg(codice: string): Promise<OrgRecord | null>
+  elencoOrg(): Promise<TorneoCloud[]>
   putOrg(codice: string, doc: string, version: number): Promise<{ conflitto: boolean; version: number }>
   deleteOrg(codice: string): Promise<void>
   registrazione(email: string, password: string, societa?: string): Promise<EsitoRegistrazione>
@@ -100,6 +109,10 @@ export function creaClient(config: { baseUrl: string; sessione?: string }): Regi
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error((data as { error?: string }).error ?? `Errore ${res.status}`)
       return data as OrgRecord
+    },
+    async elencoOrg() {
+      const d = (await call('GET', '/api/org', { sessione: true })) as { tornei: TorneoCloud[] }
+      return d.tornei
     },
     async putOrg(codice, doc, version) {
       const res = await fetch(`${base}/api/org/${codice}`, {

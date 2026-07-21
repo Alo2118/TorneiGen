@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listTournaments } from '../db/repositories'
-import { caricaDalCloud } from '../services/orgSync'
+import { caricaDalCloud, elencoTorneiCloud } from '../services/orgSync'
 import { getSessione } from '../services/config'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
+import type { TorneoCloud } from '../services/registrations-api'
 
 export function HomeScreen() {
   const tornei = useLiveQuery(listTournaments, [], [])
@@ -14,14 +15,35 @@ export function HomeScreen() {
   const [codice, setCodice] = useState('')
   const [caricando, setCaricando] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const [cloud, setCloud] = useState<TorneoCloud[] | null>(null)
+  const [caricandoElenco, setCaricandoElenco] = useState(false)
 
-  async function handleCarica() {
+  async function apriCarica() {
+    const nuovoStato = !apertoCarica
+    setApertoCarica(nuovoStato)
+    if (!nuovoStato) return
+    setErrore(null)
+    if (!getSessione()) {
+      setCloud(null)
+      return
+    }
+    setCaricandoElenco(true)
+    try {
+      setCloud(await elencoTorneiCloud())
+    } catch {
+      setCloud(null)
+      setErrore('Impossibile leggere l’elenco dal cloud. Puoi comunque caricare per codice.')
+    } finally {
+      setCaricandoElenco(false)
+    }
+  }
+
+  async function caricaCodice(c: string) {
     setErrore(null)
     if (!getSessione()) {
       setErrore('Accedi prima per caricare un torneo dal cloud (Impostazioni → Accedi).')
       return
     }
-    const c = codice.trim().toUpperCase()
     if (!c) return
     setCaricando(true)
     try {
@@ -32,10 +54,14 @@ export function HomeScreen() {
       }
       navigate(`/tornei/${id}`)
     } catch {
-      setErrore('Errore di connessione o token non valido.')
+      setErrore('Errore di connessione o sessione non valida.')
     } finally {
       setCaricando(false)
     }
+  }
+
+  function handleCarica() {
+    void caricaCodice(codice.trim().toUpperCase())
   }
 
   return (
@@ -43,21 +69,44 @@ export function HomeScreen() {
       <header className="home-head">
         <h1>Tornei</h1>
         <div className="home-head-azioni">
-          <Button variant="ghost" onClick={() => setApertoCarica((v) => !v)}>Carica dal cloud</Button>
+          <Button variant="ghost" onClick={() => void apriCarica()}>Carica dal cloud</Button>
           <Link to="/tornei/nuovo"><Button>Nuovo torneo</Button></Link>
         </div>
       </header>
 
       {apertoCarica && (
         <div className="home-carica">
+          {!getSessione() ? (
+            <p className="muted">Accedi per vedere i tuoi tornei nel cloud (Impostazioni → Accedi).</p>
+          ) : caricandoElenco ? (
+            <p className="muted">Caricamento elenco…</p>
+          ) : cloud && cloud.length > 0 ? (
+            <>
+              <p className="muted">I tuoi tornei dal cloud:</p>
+              <ul className="cloud-list">
+                {cloud.map((t) => (
+                  <li key={t.codice}>
+                    <Button variant="ghost" disabled={caricando} onClick={() => void caricaCodice(t.codice)}>
+                      {t.nome}
+                      {t.tipologia ? ` · ${t.tipologia}` : ''}
+                      {t.data ? ` · ${t.data}` : ''}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            cloud && <p className="muted">Nessun torneo nel cloud per la tua società.</p>
+          )}
+
           <Field
-            label="Codice torneo"
+            label="Oppure carica per codice"
             value={codice}
             onChange={(e) => { setCodice(e.target.value); setErrore(null) }}
             placeholder="es. ABC123"
           />
           <div className="home-carica-azioni">
-            <Button onClick={() => void handleCarica()} disabled={caricando}>
+            <Button onClick={handleCarica} disabled={caricando}>
               {caricando ? 'Caricamento…' : 'Carica'}
             </Button>
           </div>

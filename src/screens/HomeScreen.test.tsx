@@ -9,6 +9,7 @@ import type { Tournament } from '../engine/types'
 
 vi.mock('../services/orgSync', () => ({
   caricaDalCloud: vi.fn(),
+  elencoTorneiCloud: vi.fn(async () => []),
 }))
 
 const t: Tournament = {
@@ -40,22 +41,38 @@ describe('HomeScreen', () => {
     const user = userEvent.setup()
     render(<MemoryRouter><HomeScreen /></MemoryRouter>)
     await user.click(screen.getByRole('button', { name: /carica dal cloud/i }))
-    await user.type(screen.getByLabelText(/codice torneo/i), 'ABC123')
+    expect(await screen.findByText(/accedi per vedere i tuoi tornei/i)).toBeInTheDocument()
+    await user.type(screen.getByLabelText(/codice/i), 'ABC123')
     await user.click(screen.getByRole('button', { name: /^carica$/i }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/accedi prima/i)
     const { caricaDalCloud } = await import('../services/orgSync')
     expect(caricaDalCloud).not.toHaveBeenCalled()
   })
 
-  it('con una sessione attiva, tenta il caricamento dal cloud', async () => {
+  it('con una sessione attiva, tenta il caricamento per codice', async () => {
     localStorage.setItem('sessione', 'x')
     const { caricaDalCloud } = await import('../services/orgSync')
     vi.mocked(caricaDalCloud).mockResolvedValue('t1')
     const user = userEvent.setup()
     render(<MemoryRouter><HomeScreen /></MemoryRouter>)
     await user.click(screen.getByRole('button', { name: /carica dal cloud/i }))
-    await user.type(screen.getByLabelText(/codice torneo/i), 'ABC123')
+    await user.type(screen.getByLabelText(/codice/i), 'ABC123')
     await user.click(screen.getByRole('button', { name: /^carica$/i }))
     expect(caricaDalCloud).toHaveBeenCalledWith('ABC123')
+  })
+
+  it('con sessione, elenca i tornei dal cloud e li carica al click', async () => {
+    localStorage.setItem('sessione', 'x')
+    const { elencoTorneiCloud, caricaDalCloud } = await import('../services/orgSync')
+    vi.mocked(elencoTorneiCloud).mockResolvedValue([
+      { codice: 'BBB', nome: 'Torneo Cloud', tipologia: '4x4', data: '2026-07-20', updatedAt: 't' },
+    ])
+    vi.mocked(caricaDalCloud).mockResolvedValue('t1')
+    const user = userEvent.setup()
+    render(<MemoryRouter><HomeScreen /></MemoryRouter>)
+    await user.click(screen.getByRole('button', { name: /carica dal cloud/i }))
+    const voce = await screen.findByRole('button', { name: /torneo cloud/i })
+    await user.click(voce)
+    expect(caricaDalCloud).toHaveBeenCalledWith('BBB')
   })
 })

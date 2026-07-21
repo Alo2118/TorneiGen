@@ -1,4 +1,4 @@
-import type { RegistrationsClient } from './registrations-api'
+import type { RegistrationsClient, TorneoCloud } from './registrations-api'
 import type { OrgDoc } from '../types/org'
 import { getClient, getSessione } from './config'
 import { getTournament, matchesOf, saveTournament } from '../db/repositories'
@@ -101,6 +101,11 @@ export async function caricaDalCloud(
   }
   await applicaEScrivi(doc.tournament.id, doc, record.version)
   return doc.tournament.id
+}
+
+/** Elenco dei tornei della propria società presenti nel cloud (per "I miei tornei dal cloud"). */
+export async function elencoTorneiCloud(client: RegistrationsClient = getClient()): Promise<TorneoCloud[]> {
+  return client.elencoOrg()
 }
 
 export async function risolviConflittoUsaCloud(

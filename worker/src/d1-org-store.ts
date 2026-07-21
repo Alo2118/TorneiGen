@@ -37,5 +37,14 @@ export function d1OrgStore(db: D1Like): OrgStore {
     async delete(codice) {
       await db.prepare('DELETE FROM organizzazioni WHERE codice = ?').bind(codice).run()
     },
+    async elenco(societaId) {
+      const col = 'codice, doc, version, updatedAt, societa_id AS societaId'
+      const q =
+        societaId == null
+          ? db.prepare(`SELECT ${col} FROM organizzazioni`)
+          : db.prepare(`SELECT ${col} FROM organizzazioni WHERE societa_id = ?`).bind(societaId)
+      const { results } = await q.all<OrgRecord>()
+      return results
+    },
   }
 }

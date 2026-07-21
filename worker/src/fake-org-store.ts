@@ -13,5 +13,9 @@ export function fakeOrgStore(seed?: OrgRecord[]): OrgStore {
     async delete(codice) {
       m.delete(codice)
     },
+    async elenco(societaId) {
+      const tutti = [...m.values()]
+      return societaId == null ? tutti : tutti.filter((r) => r.societaId === societaId)
+    },
   }
 }

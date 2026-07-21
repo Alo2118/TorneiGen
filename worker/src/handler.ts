@@ -14,6 +14,8 @@ export interface OrgStore {
   get(codice: string): Promise<OrgRecord | null>
   put(row: OrgRecord): Promise<void>
   delete(codice: string): Promise<void>
+  // Elenco dei documenti org. societaId null = tutti (admin); altrimenti solo quelli della società.
+  elenco(societaId: string | null): Promise<OrgRecord[]>
 }
 
 export interface UtenteRecord {
@@ -311,6 +313,30 @@ export async function handle(req: Request, env: Env): Promise<Response> {
     if (!(await proprietarioConsentito(p2, s, env))) return json({ error: 'vietato' }, 403)
     await env.KV.delete(`pubblico:${p2}`)
     return json({ ok: true })
+  }
+
+  // GET /api/org  (elenco dei tornei della società, per "I miei tornei dal cloud")
+  if (req.method === 'GET' && p1 === 'org' && !p2) {
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
+    // Utente non-admin senza società: nessun torneo (evita di enumerare i documenti legacy altrui).
+    if (s.ruolo !== 'admin' && !s.societaId) return json({ tornei: [] })
+    const righe = await env.ORG.elenco(s.ruolo === 'admin' ? null : s.societaId)
+    const tornei = righe.map((r) => {
+      let nome = r.codice
+      let tipologia: string | undefined
+      let data: string | undefined
+      try {
+        const t = (JSON.parse(r.doc) as { tournament?: { nome?: string; tipologia?: string; data?: string } }).tournament
+        if (t?.nome) nome = t.nome
+        tipologia = t?.tipologia
+        data = t?.data
+      } catch {
+        // documento illeggibile: si mostra almeno il codice come nome
+      }
+      return { codice: r.codice, nome, tipologia, data, updatedAt: r.updatedAt }
+    })
+    return json({ tornei })
   }
 
   // GET /api/org/:codice  (organizzatore, privato)

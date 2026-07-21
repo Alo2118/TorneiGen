@@ -52,6 +52,18 @@ describe('registrations-api', () => {
     expect(r).toHaveLength(1)
   })
 
+  it('elencoOrg chiama GET /api/org con la sessione e ritorna i tornei', async () => {
+    const f = mockFetch(200, { tornei: [{ codice: 'AAA', nome: 'Coppa', tipologia: '2x2', data: '2026-07-20', updatedAt: 't' }] })
+    vi.stubGlobal('fetch', f)
+    const r = await client().elencoOrg()
+    expect(r).toEqual([{ codice: 'AAA', nome: 'Coppa', tipologia: '2x2', data: '2026-07-20', updatedAt: 't' }])
+    const call0 = f.mock.calls[0] as unknown[]
+    expect(call0[0]).toBe('http://api.test/api/org')
+    const opts = call0[1] as RequestInit
+    expect(opts.method).toBe('GET')
+    expect((opts.headers as Record<string, string>).authorization).toBe('Bearer sess-xyz')
+  })
+
   it('elencaIscrizioni invia la sessione nell\'header', async () => {
     const f = mockFetch(200, { iscrizioni: [] })
     vi.stubGlobal('fetch', f)

@@ -243,6 +243,50 @@ describe('handle', () => {
     const r = await handle(req('GET', '/api/org/ABC', { headers: await authS2() }), env({}, [orgRow({ societaId: null })]))
     expect(r.status).toBe(200)
   })
+
+  describe('GET /api/org (elenco tornei della società)', () => {
+    const docConNome = (nome: string, tipologia = '2x2', data = '2026-07-20') =>
+      JSON.stringify({ tournament: { nome, tipologia, data }, teams: [], groups: [], struttura: [] })
+    const seed = (): OrgRecord[] => [
+      orgRow({ codice: 'AAA', doc: docConNome('Coppa Estate'), societaId: 's1' }),
+      orgRow({ codice: 'BBB', doc: docConNome('Torneo Misto', '4x4'), societaId: 's1' }),
+      orgRow({ codice: 'CCC', doc: docConNome('Altra Società'), societaId: 's2' }),
+    ]
+
+    it('senza sessione -> 401', async () => {
+      const r = await handle(req('GET', '/api/org'), env({}, seed()))
+      expect(r.status).toBe(401)
+    })
+
+    it('utente di s1 -> solo i tornei di s1, con nome/tipologia estratti dal doc', async () => {
+      const r = await handle(req('GET', '/api/org', { headers: await authS1() }), env({}, seed()))
+      expect(r.status).toBe(200)
+      const { tornei } = await r.json()
+      expect(tornei.map((t: { codice: string }) => t.codice).sort()).toEqual(['AAA', 'BBB'])
+      const aaa = tornei.find((t: { codice: string }) => t.codice === 'AAA')
+      expect(aaa).toMatchObject({ nome: 'Coppa Estate', tipologia: '2x2' })
+    })
+
+    it('admin -> tutti i tornei di tutte le società', async () => {
+      const r = await handle(req('GET', '/api/org', { headers: await authAdminSess() }), env({}, seed()))
+      expect(r.status).toBe(200)
+      const { tornei } = await r.json()
+      expect(tornei.map((t: { codice: string }) => t.codice).sort()).toEqual(['AAA', 'BBB', 'CCC'])
+    })
+
+    it('utente senza società -> elenco vuoto (niente enumerazione dei documenti legacy)', async () => {
+      const tokenSenzaSoc = await creaJWT({ sub: 'u-x', email: 'x@x.it', ruolo: 'utente', societaId: null }, AUTH_SECRET)
+      const r = await handle(req('GET', '/api/org', { headers: { authorization: `Bearer ${tokenSenzaSoc}` } }), env({}, seed()))
+      expect(r.status).toBe(200)
+      expect((await r.json()).tornei).toEqual([])
+    })
+
+    it('doc illeggibile -> nome ripiega sul codice', async () => {
+      const r = await handle(req('GET', '/api/org', { headers: await authS1() }), env({}, [orgRow({ codice: 'ZZZ', doc: 'non-json', societaId: 's1' })]))
+      const { tornei } = await r.json()
+      expect(tornei[0]).toMatchObject({ codice: 'ZZZ', nome: 'ZZZ' })
+    })
+  })
   it('PUT nuovo documento (version 0) -> 200 version 1, salva e reclama la società', async () => {
     const e = env()
     const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: '{"a":1}', version: 0 } }), e)
