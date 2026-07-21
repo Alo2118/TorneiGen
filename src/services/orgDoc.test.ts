@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '../db/database'
 import { saveTournament } from '../db/repositories'
-import { buildOrgDoc, applyOrgDoc, scriviOrgLocale } from './orgDoc'
+import { buildOrgDoc, applyOrgDoc, scriviOrgLocale, strutturaDiverge } from './orgDoc'
+import type { OrgDoc } from '../types/org'
 import type { Tournament, Team, Group, Match } from '../engine/types'
 
 const torneo: Tournament = {
@@ -115,6 +116,29 @@ describe('applyOrgDoc', () => {
     expect(res.matches[0].id).toBe('nuovo')
     expect(res.matches[0].set).toEqual([])
     expect(res.matches[0].stato).toBe('programmata')
+  })
+})
+
+describe('strutturaDiverge', () => {
+  const base: OrgDoc = {
+    tournament: torneo, teams: [team('a'), team('b')], groups: [group],
+    struttura: [{ id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' }],
+  }
+  it('è falsa se cambiano solo i risultati (stessa struttura)', () => {
+    const conRisultati: OrgDoc = { ...base, risultati: [{ id: 'm1', set: [{ puntiA: 21, puntiB: 9 }], vincitoreId: 'a', stato: 'conclusa' }] }
+    expect(strutturaDiverge(base, conRisultati)).toBe(false)
+  })
+  it('non dipende dall\'ordine di squadre/gironi/struttura', () => {
+    const riordinato: OrgDoc = { ...base, teams: [team('b'), team('a')] }
+    expect(strutturaDiverge(base, riordinato)).toBe(false)
+  })
+  it('è vera se cambia la struttura (nome torneo, squadre, tabellone)', () => {
+    expect(strutturaDiverge(base, { ...base, tournament: { ...torneo, nome: 'Altro' } })).toBe(true)
+    expect(strutturaDiverge(base, { ...base, teams: [team('a')] })).toBe(true)
+    expect(strutturaDiverge(base, { ...base, struttura: [] })).toBe(true)
+  })
+  it('gestisce documenti incompleti senza lanciare', () => {
+    expect(strutturaDiverge(base, {} as OrgDoc)).toBe(true)
   })
 })
 

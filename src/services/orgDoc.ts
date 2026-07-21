@@ -16,6 +16,25 @@ function haRisultato(m: { set: Match['set']; stato: Match['stato'] }): boolean {
   return m.set.length > 0 || m.stato !== 'programmata'
 }
 
+/**
+ * true se due documenti divergono nella STRUTTURA (torneo, squadre, gironi,
+ * tabellone), ignorando i risultati. Serve a distinguere un vero conflitto
+ * strutturale da una semplice divergenza di punteggi (che si unisce senza
+ * conflitto). Robusto verso documenti incompleti (campi mancanti).
+ */
+export function strutturaDiverge(a: OrgDoc, b: OrgDoc): boolean {
+  const perId = <T extends { id: string }>(xs: T[] | undefined): T[] =>
+    [...(xs ?? [])].sort((x, y) => x.id.localeCompare(y.id))
+  const norm = (d: OrgDoc): string =>
+    JSON.stringify({
+      tournament: d.tournament ?? null,
+      teams: perId(d.teams),
+      groups: perId(d.groups),
+      struttura: perId(d.struttura),
+    })
+  return norm(a) !== norm(b)
+}
+
 export async function buildOrgDoc(tournamentId: string): Promise<OrgDoc> {
   const [t, teams, groups, matches] = await Promise.all([
     getTournament(tournamentId),
