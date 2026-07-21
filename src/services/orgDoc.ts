@@ -1,5 +1,5 @@
 import type { Tournament, Team, Group, Match } from '../engine/types'
-import type { OrgDoc, MatchStruct } from '../types/org'
+import type { OrgDoc, MatchStruct, RisultatoStruct } from '../types/org'
 import { db } from '../db/database'
 import { getTournament, teamsOf, groupsOf, matchesOf } from '../db/repositories'
 
@@ -11,6 +11,11 @@ function strutturaDaMatch(m: Match): MatchStruct {
   return copia as MatchStruct
 }
 
+// Una partita ha un esito da sincronizzare se ha almeno un set o non è più programmata.
+function haRisultato(m: { set: Match['set']; stato: Match['stato'] }): boolean {
+  return m.set.length > 0 || m.stato !== 'programmata'
+}
+
 export async function buildOrgDoc(tournamentId: string): Promise<OrgDoc> {
   const [t, teams, groups, matches] = await Promise.all([
     getTournament(tournamentId),
@@ -20,7 +25,10 @@ export async function buildOrgDoc(tournamentId: string): Promise<OrgDoc> {
   ])
   if (!t) throw new Error('Torneo non trovato')
   const tournament: Tournament = { ...t, pubblicato: undefined, orgVersion: undefined, orgPending: undefined }
-  return { tournament, teams, groups, struttura: matches.map(strutturaDaMatch) }
+  const risultati: RisultatoStruct[] = matches
+    .filter(haRisultato)
+    .map((m) => ({ id: m.id, set: m.set, vincitoreId: m.vincitoreId ?? null, stato: m.stato }))
+  return { tournament, teams, groups, struttura: matches.map(strutturaDaMatch), risultati }
 }
 
 export interface StatoLocaleOrg {
@@ -36,7 +44,14 @@ export function applyOrgDoc(
   localMatches: Match[],
 ): StatoLocaleOrg {
   const perId = new Map(localMatches.map((m) => [m.id, m]))
+  const risultatiCloud = new Map((doc.risultati ?? []).map((x) => [x.id, x]))
   const matches: Match[] = doc.struttura.map((s) => {
+    // Merge per-partita: il risultato dal cloud vince se presente, altrimenti
+    // si tiene quello locale (unione senza perdite tra i due dispositivi).
+    const cloud = risultatiCloud.get(s.id)
+    if (cloud) {
+      return { ...s, set: cloud.set, vincitoreId: cloud.vincitoreId ?? null, stato: cloud.stato }
+    }
     const locale = perId.get(s.id)
     return {
       ...s,

@@ -35,7 +35,14 @@ describe('buildOrgDoc', () => {
     expect('set' in s).toBe(false)
     expect('vincitoreId' in s).toBe(false)
     expect('stato' in s).toBe(false)
-    expect(JSON.stringify(doc)).not.toContain('conclusa')
+    expect(JSON.stringify(doc.struttura)).not.toContain('conclusa')
+  })
+
+  it('include i risultati (set/vincitore/stato) nella sezione risultati', async () => {
+    const doc = await buildOrgDoc('t1')
+    expect(doc.risultati).toEqual([
+      { id: 'm1', set: [{ puntiA: 21, puntiB: 15 }], vincitoreId: 'a', stato: 'conclusa' },
+    ])
   })
 
   it('esclude i campi locali dal torneo nel documento', async () => {
@@ -62,6 +69,39 @@ describe('applyOrgDoc', () => {
     expect(res.matches[0].vincitoreId).toBe('a')
     expect(res.tournament.pubblicato).toBe(true)
     expect(res.tournament.orgVersion).toBe(5)
+  })
+
+  it('prende il risultato dal cloud quando la sezione risultati lo contiene', () => {
+    const doc: import('../types/org').OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [{ id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' }],
+      risultati: [{ id: 'm1', set: [{ puntiA: 15, puntiB: 21 }], vincitoreId: 'b', stato: 'conclusa' }],
+    }
+    // il locale aveva un risultato diverso: vince il cloud
+    const locali: Match[] = [match('m1', { set: [{ puntiA: 21, puntiB: 10 }], stato: 'conclusa', vincitoreId: 'a' })]
+    const res = applyOrgDoc(doc, torneo, locali)
+    expect(res.matches[0].set).toEqual([{ puntiA: 15, puntiB: 21 }])
+    expect(res.matches[0].vincitoreId).toBe('b')
+    expect(res.matches[0].stato).toBe('conclusa')
+  })
+
+  it('unione: tiene il risultato locale per le partite che il cloud non ha ancora', () => {
+    const doc: import('../types/org').OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [
+        { id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' },
+        { id: 'm2', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'c', teamBId: 'd' },
+      ],
+      risultati: [{ id: 'm1', set: [{ puntiA: 21, puntiB: 9 }], vincitoreId: 'a', stato: 'conclusa' }],
+    }
+    // m2 segnata solo in locale: non deve andare persa
+    const locali: Match[] = [match('m2', { set: [{ puntiA: 21, puntiB: 12 }], stato: 'conclusa', vincitoreId: 'c' })]
+    const res = applyOrgDoc(doc, torneo, locali)
+    const m1 = res.matches.find((m) => m.id === 'm1')!
+    const m2 = res.matches.find((m) => m.id === 'm2')!
+    expect(m1.set).toEqual([{ puntiA: 21, puntiB: 9 }]) // dal cloud
+    expect(m2.set).toEqual([{ puntiA: 21, puntiB: 12 }]) // dal locale, preservato
+    expect(m2.vincitoreId).toBe('c')
   })
 
   it('inizializza punteggi vuoti per match nuovi e rimuove quelli assenti dal cloud', () => {

@@ -11,7 +11,7 @@ import { Modal } from '../components/Modal'
 import { CalendarGrid } from '../components/CalendarGrid'
 import { ScoreControl } from '../components/ScoreControl'
 import { mappaEtichette } from '../services/teams'
-import { notificaModificaOrg } from '../services/orgSync'
+import { notificaModificaOrg, tiraOrg } from '../services/orgSync'
 import { salvaEProppaga } from '../services/saveResult'
 import type { Match, Team, SetScore } from '../engine/types'
 
@@ -33,6 +33,7 @@ export function CalendarScreen() {
   const [nuovoOrario, setNuovoOrario] = useState('')
   const [nuovoCampo, setNuovoCampo] = useState('')
   const [matchInPunteggio, setMatchInPunteggio] = useState<Match | null>(null)
+  const [aggiornando, setAggiornando] = useState(false)
 
   if (!id || !torneo) return null
 
@@ -93,11 +94,29 @@ export function CalendarScreen() {
     setMatchInPunteggio(null)
   }
 
+  async function handleAggiorna() {
+    if (!torneo) return
+    setAggiornando(true)
+    try {
+      const esito = await tiraOrg(torneo.id)
+      if (esito.stato === 'aggiornato') toast('Risultati aggiornati dal cloud')
+      else if (esito.stato === 'sincronizzato') toast('Sincronizzato')
+      else if (esito.stato === 'inpari') toast('Già tutto aggiornato')
+      else if (esito.stato === 'conflitto') toast('Conflitto: risolvilo nel Riepilogo', 'errore')
+      else toast('Impossibile aggiornare (offline o non connesso)', 'errore')
+    } finally {
+      setAggiornando(false)
+    }
+  }
+
   return (
     <section className="bracket">
       <header className="bracket-head">
         <h1>Calendario</h1>
         <div className="bracket-head-actions">
+          <Button type="button" variant="ghost" onClick={handleAggiorna} disabled={aggiornando}>
+            {aggiornando ? 'Aggiorno…' : 'Aggiorna risultati'}
+          </Button>
           <Button type="button" onClick={handleProgramma} disabled={programmando}>
             {partiteProgrammate.length > 0 ? 'Rigenera calendario' : 'Programma calendario'}
           </Button>

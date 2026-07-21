@@ -2,6 +2,7 @@ import type { SetScore, RegolePunteggio } from '../engine/types'
 import { db } from '../db/database'
 import { applicaRisultato, propagaTabellone, propagaDoppia } from './results'
 import { pubblicaSeAttivo } from './pubblicazione'
+import { notificaModificaOrg } from './orgSync'
 
 export async function salvaEProppaga(
   tournamentId: string,
@@ -19,4 +20,7 @@ export async function salvaEProppaga(
   const finali = doppia ? propagaDoppia(conRisultato, regole) : propagaTabellone(conRisultato, regole)
   await db.matches.bulkPut(finali)
   void pubblicaSeAttivo(tournamentId)
+  // Invio automatico dei risultati al cloud (debounced): l'altro dispositivo li
+  // vedrà con "Aggiorna risultati".
+  notificaModificaOrg(tournamentId)
 }
