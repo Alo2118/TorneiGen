@@ -880,3 +880,18 @@ button.match-box:hover { border-color: var(--sea); }
   gap: 10px;
 }
 .privacy-notice .muted { font-size: .8rem; line-height: 1.4; }
+
+.nav-utente {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: .8rem;
+  min-width: 0;
+}
+.nav-utente-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

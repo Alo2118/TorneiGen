@@ -6,7 +6,7 @@ import { exportBackup } from '../db/backup'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { SyncStato } from '../components/SyncStato'
-import { utenteCorrente } from '../services/auth'
+import { utenteCorrente, type Utente } from '../services/auth'
 
 const SEZIONI = [
   { to: '', label: 'Riepilogo', icon: '⌂' },
@@ -33,12 +33,13 @@ export function AppShell() {
   const { id } = useParams()
   const navigate = useNavigate()
   const torneo = useLiveQuery(() => (id ? getTournament(id) : undefined), [id])
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [utente, setUtente] = useState<Utente | null>(null)
+  const isAdmin = utente?.ruolo === 'admin'
 
   useEffect(() => {
     let cancellato = false
     utenteCorrente().then((u) => {
-      if (!cancellato) setIsAdmin(u?.ruolo === 'admin')
+      if (!cancellato) setUtente(u)
     })
     return () => {
       cancellato = true
@@ -79,6 +80,12 @@ export function AppShell() {
         )}
 
         <div className="nav-footer">
+          {utente && (
+            <div className="nav-utente" title={`Accesso come ${utente.email} (${utente.ruolo})`}>
+              <span className="nav-icon" aria-hidden="true">◕</span>
+              <span className="nav-utente-email">{utente.email}</span>
+            </div>
+          )}
           {isAdmin && (
             <NavLink to="/admin" className="nav-link">
               <span className="nav-icon" aria-hidden="true">☑</span>
