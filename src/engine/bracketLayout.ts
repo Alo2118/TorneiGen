@@ -44,8 +44,11 @@ function matchCampione(tab: Match[]): string | null {
       ? finale.id
       : null
   }
-  const maxRound = Math.max(...tab.map((m) => m.round))
-  const ultima = tab.find((m) => m.round === maxRound)
+  // la finalina 3°/4° posto non decide il titolo: escludila dal calcolo del campione
+  const principali = tab.filter((m) => m.tabelloneTipo !== 'terzo')
+  if (principali.length === 0) return null
+  const maxRound = Math.max(...principali.map((m) => m.round))
+  const ultima = principali.find((m) => m.round === maxRound)
   return ultima?.stato === 'conclusa' && ultima.vincitoreId ? ultima.id : null
 }
 
@@ -61,7 +64,8 @@ export function layoutBracket(matches: Match[]): BracketLayout {
   const campione = campioneTorneo(matches)
   const campioneMatchId = matchCampione(tab)
   if (tab.length === 0) return { nodi: [], segmenti: [], campione, campioneMatchId, larghezza: 0, altezza: 0 }
-  const doppia = tab.some((m) => m.tabelloneTipo !== undefined)
+  // 'terzo' (finalina) è un box a sé nel tabellone singolo: non attiva il layout doppia
+  const doppia = tab.some((m) => m.tabelloneTipo !== undefined && m.tabelloneTipo !== 'terzo')
   return doppia ? layoutDoppia(tab, campione, campioneMatchId) : layoutSingola(tab, campione, campioneMatchId)
 }
 
@@ -72,14 +76,16 @@ function finalize(nodi: BracketNode[], segmenti: BracketSegment[], campione: str
 }
 
 function layoutSingola(tab: Match[], campione: string | null, campioneMatchId: string | null): BracketLayout {
-  const rounds = [...new Set(tab.map((m) => m.round))].sort((a, b) => a - b)
+  const terzo = tab.find((m) => m.tabelloneTipo === 'terzo')
+  const albero = tab.filter((m) => m.tabelloneTipo !== 'terzo')
+  const rounds = [...new Set(albero.map((m) => m.round))].sort((a, b) => a - b)
   const byRoundIndex = new Map<string, Match>()
-  for (const m of tab) byRoundIndex.set(`${m.round}:${m.posizioneTabellone ?? 0}`, m)
+  for (const m of albero) byRoundIndex.set(`${m.round}:${m.posizioneTabellone ?? 0}`, m)
 
   const nodi: BracketNode[] = []
   const yById = new Map<string, number>()
   for (const round of rounds) {
-    const correnti = tab
+    const correnti = albero
       .filter((m) => m.round === round)
       .sort((a, b) => (a.posizioneTabellone ?? 0) - (b.posizioneTabellone ?? 0))
     correnti.forEach((m) => {
@@ -102,9 +108,15 @@ function layoutSingola(tab: Match[], campione: string | null, campioneMatchId: s
   }
 
   const segmenti: BracketSegment[] = []
-  for (const m of tab) {
+  for (const m of albero) {
     const parent = byRoundIndex.get(`${m.round + 1}:${Math.floor((m.posizioneTabellone ?? 0) / 2)}`)
     if (parent) segmenti.push({ from: m.id, to: parent.id, tipo: 'avanza' })
+  }
+  // finalina 3°/4° posto: box isolato sotto l'ultima colonna, senza collegamenti
+  if (terzo) {
+    const maxX = nodi.length ? Math.max(...nodi.map((n) => n.x)) : 0
+    const maxY = nodi.length ? Math.max(...nodi.map((n) => n.y)) : 0
+    nodi.push({ matchId: terzo.id, round: 0, tabelloneTipo: 'terzo', x: maxX, y: maxY + SLOT_H * 2, w: BOX_W, h: BOX_H })
   }
   return finalize(nodi, segmenti, campione, campioneMatchId)
 }

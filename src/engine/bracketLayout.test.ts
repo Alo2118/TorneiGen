@@ -9,6 +9,22 @@ function md(p: Partial<Match> & { id: string }): Match {
   }
 }
 
+describe('finalina 3°/4° posto (tabelloneTipo terzo)', () => {
+  it('resta single-elim: campione = vincitore della finale, finalina disegnata come box a sé', () => {
+    const tab: Match[] = [
+      md({ id: 's0', round: 1, posizioneTabellone: 0, teamAId: 'A1', teamBId: 'B2' }),
+      md({ id: 's1', round: 1, posizioneTabellone: 1, teamAId: 'B1', teamBId: 'A2' }),
+      md({ id: 'f', round: 2, posizioneTabellone: 0, teamAId: 'A1', teamBId: 'B1', vincitoreId: 'B1', stato: 'conclusa', set: [{ puntiA: 10, puntiB: 21 }, { puntiA: 9, puntiB: 21 }] }),
+      md({ id: 't3', round: 2, posizioneTabellone: 1, tabelloneTipo: 'terzo', teamAId: 'B2', teamBId: 'A2' }),
+    ]
+    const layout = layoutBracket(tab)
+    expect(layout.campione).toBe('B1') // vincitore finale, non della finalina
+    expect(layout.nodi.find((n) => n.matchId === 't3')).toBeTruthy()
+    // la finalina non ha collegamenti verso altri box
+    expect(layout.segmenti.some((s) => s.from === 't3' || s.to === 't3')).toBe(false)
+  })
+})
+
 describe('campioneTorneo', () => {
   it('diretta: vincitore dell\'ultimo round', () => {
     const m = [

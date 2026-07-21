@@ -49,6 +49,19 @@ export function propagaTabellone(matches: Match[], regole: RegolePunteggio): Mat
     }
   }
 
+  // Instradamento dei perdenti verso la finalina 3°/4° posto (tabelloneTipo 'terzo').
+  // Usato solo quando le semifinali hanno un perdenteVerso; single-elim normale è invariato.
+  for (const m of lista) {
+    if (!m.perdenteVerso) continue
+    const o = matchOutcome(m.set, regole)
+    if (!o.completa || o.vincitore == null) continue
+    const perdente = o.vincitore === 'A' ? m.teamBId : m.teamAId
+    const dest = lista.find((x) => x.id === m.perdenteVerso!.matchId)
+    if (!dest) continue
+    if (m.perdenteVerso.slot === 'A') dest.teamAId = perdente
+    else dest.teamBId = perdente
+  }
+
   // ricompone: match non-tabellone invariati + tabellone aggiornato
   const aggiornati = new Map(lista.map((m) => [m.id, m]))
   return matches.map((m) => aggiornati.get(m.id) ?? m)
