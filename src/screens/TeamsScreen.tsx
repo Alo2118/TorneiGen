@@ -104,6 +104,24 @@ export function TeamsScreen() {
     resetForm()
   }
 
+  async function handleAddSoloNome() {
+    const nomePulito = nome.trim()
+    if (!nomePulito) {
+      setErrore('Il nome squadra è obbligatorio')
+      return
+    }
+    await db.teams.put({
+      id: newId(),
+      tournamentId,
+      nome: nomePulito,
+      players: [],
+      stato: 'confermata',
+      origine: 'manuale',
+    })
+    if (id) notificaModificaOrg(id)
+    resetForm()
+  }
+
   const puoAggiungereRiga = players.length < max
   const puoRimuovereRiga = players.length > min
 
@@ -239,6 +257,11 @@ export function TeamsScreen() {
           {editingId && (
             <Button type="button" variant="ghost" onClick={resetForm}>
               Annulla
+            </Button>
+          )}
+          {!editingId && (
+            <Button type="button" variant="ghost" onClick={handleAddSoloNome}>
+              Aggiungi solo nome
             </Button>
           )}
           <Button type="submit">{editingId ? 'Salva modifiche' : 'Aggiungi squadra'}</Button>

@@ -40,6 +40,37 @@ describe('TeamsScreen', () => {
     expect(t?.stato).toBe('confermata')
   })
 
+  it('4x4: "Aggiungi solo nome" crea una squadra senza giocatori', async () => {
+    await db.tournaments.clear()
+    await db.teams.clear()
+    await saveTournament({ ...t, id: 't4', tipologia: '4x4', nome: '4x4 Misto' })
+    render(
+      <MemoryRouter initialEntries={['/tornei/t4/squadre']}>
+        <Routes><Route path="/tornei/:id/squadre" element={<TeamsScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.type(await screen.findByLabelText('Nome squadra'), 'ACE TEAM')
+    await userEvent.click(screen.getByRole('button', { name: /solo nome/i }))
+    expect(await screen.findByText('ACE TEAM')).toBeTruthy()
+    const create = (await db.teams.where('tournamentId').equals('t4').toArray()).find((x) => x.nome === 'ACE TEAM')
+    expect(create?.players).toEqual([])
+    expect(create?.stato).toBe('confermata')
+  })
+
+  it('4x4: "Aggiungi solo nome" senza nome mostra errore e non salva', async () => {
+    await db.tournaments.clear()
+    await db.teams.clear()
+    await saveTournament({ ...t, id: 't4', tipologia: '4x4', nome: '4x4 Misto' })
+    render(
+      <MemoryRouter initialEntries={['/tornei/t4/squadre']}>
+        <Routes><Route path="/tornei/:id/squadre" element={<TeamsScreen />} /></Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /solo nome/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/nome squadra/i)
+    expect(await db.teams.where('tournamentId').equals('t4').count()).toBe(0)
+  })
+
   it('2x2: salva una coppia senza nome squadra e la mostra coi cognomi', async () => {
     render(
       <MemoryRouter initialEntries={['/tornei/t1/squadre']}>
