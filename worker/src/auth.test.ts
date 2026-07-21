@@ -45,6 +45,11 @@ describe('jwt', () => {
     expect(await verificaJWT('non-un-jwt', seg, 1_000_000)).toBeNull()
     expect(await verificaJWT('@@@.@@@.@@@', seg, 1_000_000)).toBeNull()
   })
+  it('AUTH_SECRET vuoto (misconfigurazione) → null senza lanciare', async () => {
+    await expect(verificaJWT('some.bearer.token', '', 1_000_000)).resolves.toBeNull()
+    const t = await creaJWT(base, seg, 3600, 1_000_000)
+    await expect(verificaJWT(t, '', 1_000_000)).resolves.toBeNull()
+  })
   it('token alg:none (nessuna confusione di algoritmo) → null', async () => {
     // header {"alg":"none"} + payload valido + firma vuota: verifica ricalcola comunque l'HMAC → null
     const b64url = (s: string) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
 import { getTournament, teamsOf, saveTournament } from '../db/repositories'
-import { getClient, getReadToken } from '../services/config'
+import { getClient, getSessione } from '../services/config'
 import { nuoveIscrizioni, iscrizioneATeam } from '../services/import'
 import { etichettaIscrizione } from '../services/teams'
 import { notificaModificaOrg } from '../services/orgSync'
@@ -45,7 +45,7 @@ export function RegistrationsAdminScreen() {
 
   if (!id || !torneo) return null
 
-  const tokenMancante = !getReadToken()
+  const sessioneMancante = !getSessione()
 
   async function pubblica(chiuso: boolean) {
     if (!torneo) return
@@ -140,17 +140,17 @@ export function RegistrationsAdminScreen() {
         <p className="muted">Apri le iscrizioni per condividere un link pubblico dove i partecipanti possono registrarsi.</p>
       </header>
 
-      {tokenMancante && (
+      {sessioneMancante && (
         <p className="field-error" role="alert">
-          Manca il token di lettura: configuralo nelle <Link to="/impostazioni">impostazioni</Link> per poter pubblicare le iscrizioni.
+          Devi accedere per poter pubblicare le iscrizioni: vai alle <Link to="/impostazioni">impostazioni</Link> per accedere.
         </p>
       )}
 
       <div className="registrations-actions">
-        <Button onClick={() => pubblica(false)} disabled={caricando || tokenMancante}>
+        <Button onClick={() => pubblica(false)} disabled={caricando || sessioneMancante}>
           Apri iscrizioni
         </Button>
-        <Button variant="ghost" onClick={() => pubblica(true)} disabled={caricando || tokenMancante}>
+        <Button variant="ghost" onClick={() => pubblica(true)} disabled={caricando || sessioneMancante}>
           Chiudi iscrizioni
         </Button>
       </div>
@@ -179,7 +179,7 @@ export function RegistrationsAdminScreen() {
       <div className="registrations-import">
         <h2>Iscrizioni ricevute</h2>
         <div className="registrations-actions">
-          <Button variant="ghost" onClick={scaricaIscrizioni} disabled={scaricando || tokenMancante}>
+          <Button variant="ghost" onClick={scaricaIscrizioni} disabled={scaricando || sessioneMancante}>
             Scarica iscrizioni
           </Button>
         </div>

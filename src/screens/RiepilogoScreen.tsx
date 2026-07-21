@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
 import { getTournament, teamsOf, matchesOf } from '../db/repositories'
 import { prossimoPasso } from '../services/prossimoPasso'
-import { getClient, getReadToken } from '../services/config'
+import { getClient, getSessione } from '../services/config'
 import { nuoveIscrizioni, iscrizioneATeam } from '../services/import'
 import { useToast } from '../components/Toast'
 import { Badge } from '../components/Badge'
@@ -47,7 +47,7 @@ export function RiepilogoScreen() {
     tipologia: Tipologia,
     annullato: () => boolean,
   ) {
-    if (!getReadToken()) return
+    if (!getSessione()) return
     setSincronizzando(true)
     try {
       const tutte = await getClient().elencaIscrizioni(codice)
@@ -143,7 +143,7 @@ export function RiepilogoScreen() {
       <div className="registrations-actions">
         <Button
           variant="ghost"
-          disabled={sincronizzando || !getReadToken()}
+          disabled={sincronizzando || !getSessione()}
           onClick={() => {
             if (torneo.codiceIscrizione) void sincronizzaIscrizioni(torneo.codiceIscrizione, id, torneo.tipologia, () => false)
           }}

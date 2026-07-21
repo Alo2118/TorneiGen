@@ -5,7 +5,6 @@ import { d1SocietaStore } from './d1-societa-store'
 
 interface CfEnv {
   KV: Env['KV']
-  READ_TOKEN: string
   WRITE_TOKEN: string
   DB: D1Like
   AUTH_SECRET: string
@@ -16,7 +15,6 @@ export default {
   fetch(request: Request, cfEnv: CfEnv): Promise<Response> {
     const env: Env = {
       KV: cfEnv.KV,
-      READ_TOKEN: cfEnv.READ_TOKEN,
       WRITE_TOKEN: cfEnv.WRITE_TOKEN,
       ORG: d1OrgStore(cfEnv.DB),
       USERS: d1UserStore(cfEnv.DB),

@@ -55,14 +55,13 @@ export interface RegistrationsClient {
   abilitaUtente(id: string, societaId: string): Promise<void>
 }
 
-export function creaClient(config: { baseUrl: string; token?: string; sessione?: string }): RegistrationsClient {
+export function creaClient(config: { baseUrl: string; sessione?: string }): RegistrationsClient {
   const base = config.baseUrl.replace(/\/+$/, '')
   const headerW = (): Record<string, string> => (config.sessione ? { authorization: `Bearer ${config.sessione}` } : {})
 
-  async function call(method: string, path: string, opts: { body?: unknown; auth?: boolean; sessione?: boolean } = {}): Promise<unknown> {
+  async function call(method: string, path: string, opts: { body?: unknown; sessione?: boolean } = {}): Promise<unknown> {
     const headers: Record<string, string> = {}
     if (opts.body !== undefined) headers['content-type'] = 'application/json'
-    if (opts.auth && config.token) headers.authorization = `Bearer ${config.token}`
     if (opts.sessione) Object.assign(headers, headerW())
     const res = await fetch(base + path, {
       method,
@@ -79,21 +78,21 @@ export function creaClient(config: { baseUrl: string; token?: string; sessione?:
 
   return {
     getRiepilogo: (codice) => call('GET', `/api/torneo/${codice}`) as Promise<Riepilogo>,
-    pubblicaRiepilogo: (r) => call('POST', '/api/torneo', { body: r, auth: true }) as Promise<Riepilogo>,
+    pubblicaRiepilogo: (r) => call('POST', '/api/torneo', { body: r, sessione: true }) as Promise<Riepilogo>,
     inviaIscrizione: (codice, dati) => call('POST', `/api/iscrizioni/${codice}`, { body: dati }) as Promise<{ id: string }>,
     async elencaIscrizioni(codice) {
-      const d = (await call('GET', `/api/iscrizioni/${codice}`, { auth: true })) as { iscrizioni: Iscrizione[] }
+      const d = (await call('GET', `/api/iscrizioni/${codice}`, { sessione: true })) as { iscrizioni: Iscrizione[] }
       return d.iscrizioni
     },
     async eliminaIscrizione(codice, id) {
-      await call('DELETE', `/api/iscrizioni/${codice}/${id}`, { auth: true })
+      await call('DELETE', `/api/iscrizioni/${codice}/${id}`, { sessione: true })
     },
     async pubblicaSnapshot(snap) {
-      await call('POST', `/api/pubblico/${snap.codice}`, { body: snap, auth: true })
+      await call('POST', `/api/pubblico/${snap.codice}`, { body: snap, sessione: true })
     },
     getSnapshot: (codice) => call('GET', `/api/pubblico/${codice}`) as Promise<PublicSnapshot>,
     async rimuoviSnapshot(codice) {
-      await call('DELETE', `/api/pubblico/${codice}`, { auth: true })
+      await call('DELETE', `/api/pubblico/${codice}`, { sessione: true })
     },
     async getOrg(codice) {
       const res = await fetch(`${base}/api/org/${codice}`, { headers: headerW() })

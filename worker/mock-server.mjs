@@ -9,7 +9,6 @@ import { fakeSocietaStore } from './src/fake-societa-store.ts'
 // su Node 22+, oppure `npx tsx worker/mock-server.mjs`). Vedi lo script npm.
 const env = {
   KV: fakeKV(),
-  READ_TOKEN: process.env.READ_TOKEN || 'dev-token',
   WRITE_TOKEN: process.env.WRITE_TOKEN || 'dev-write',
   ORG: fakeOrgStore(),
   USERS: fakeUserStore(),
@@ -35,4 +34,4 @@ const server = createServer(async (nreq, nres) => {
   nres.end(buf)
 })
 
-server.listen(8787, () => console.log('Mock API iscrizioni su http://localhost:8787 (token: dev-token)'))
+server.listen(8787, () => console.log('Mock API iscrizioni su http://localhost:8787 (write token: dev-write)'))

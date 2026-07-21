@@ -51,7 +51,6 @@ export interface SocietaStore {
 
 export interface Env {
   KV: KV
-  READ_TOKEN: string
   WRITE_TOKEN: string
   ORG: OrgStore
   USERS: UserStore
@@ -70,11 +69,6 @@ function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...CORS } })
 }
 
-function autorizzato(req: Request, env: Env): boolean {
-  const m = (req.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i)
-  return !!m && m[1] === env.READ_TOKEN
-}
-
 async function sessione(req: Request, env: Env): Promise<SessioneUtente | null> {
   const t = estraiBearer(req)
   return t ? verificaJWT(t, env.AUTH_SECRET) : null
@@ -90,6 +84,22 @@ function emailValida(e: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 }
 
+// Scoping per società sulle rotte organizzatore. La proprietà di un torneo è tracciata in KV
+// (`owner:<codice>`), reclamata alla prima pubblicazione. Consentito ad admin, al proprietario,
+// o se ancora senza proprietario (grazia sui documenti legacy). Con `claim`, registra il proprietario.
+async function proprietarioConsentito(
+  codice: string,
+  s: SessioneUtente,
+  env: Env,
+  opts: { claim?: boolean } = {},
+): Promise<boolean> {
+  const owner = await env.KV.get(`owner:${codice}`)
+  const consentito = s.ruolo === 'admin' || !owner || owner === s.societaId
+  if (!consentito) return false
+  if (opts.claim && !owner && s.societaId) await env.KV.put(`owner:${codice}`, s.societaId)
+  return true
+}
+
 export async function handle(req: Request, env: Env): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
 
@@ -97,6 +107,13 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   const [p0, p1, p2, p3] = parts
 
   if (p0 !== 'api') return json({ error: 'not found' }, 404)
+
+  // Le rotte con sessione (auth, admin, org) creano o verificano JWT via AUTH_SECRET.
+  // Se il segreto non è configurato, importKey lancerebbe una DataError opaca (error 1101 su
+  // Cloudflare): meglio un 503 esplicito così un secret mal configurato è diagnosticabile.
+  if ((p1 === 'auth' || p1 === 'admin' || p1 === 'org') && !env.AUTH_SECRET) {
+    return json({ error: 'configurazione server incompleta: AUTH_SECRET mancante' }, 503)
+  }
 
   // POST /api/auth/registrazione
   if (req.method === 'POST' && p1 === 'auth' && p2 === 'registrazione' && !p3) {
@@ -191,7 +208,8 @@ export async function handle(req: Request, env: Env): Promise<Response> {
 
   // POST /api/torneo  (organizzatore)
   if (req.method === 'POST' && p1 === 'torneo' && !p2) {
-    if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
     let b: Partial<Riepilogo>
     try {
       b = (await req.json()) as Partial<Riepilogo>
@@ -199,6 +217,7 @@ export async function handle(req: Request, env: Env): Promise<Response> {
       return json({ error: 'JSON non valido' }, 400)
     }
     if (!b.codice || !b.nome || !b.tipologia) return json({ error: 'dati incompleti' }, 400)
+    if (!(await proprietarioConsentito(b.codice, s, env, { claim: true }))) return json({ error: 'vietato' }, 403)
     const riepilogo: Riepilogo = {
       codice: b.codice, nome: b.nome, tipologia: b.tipologia,
       formato: b.formato ?? null, chiuso: !!b.chiuso, updatedAt: b.updatedAt ?? new Date().toISOString(),
@@ -240,7 +259,9 @@ export async function handle(req: Request, env: Env): Promise<Response> {
 
   // GET /api/iscrizioni/:codice  (organizzatore)
   if (req.method === 'GET' && p1 === 'iscrizioni' && p2 && !p3) {
-    if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
+    if (!(await proprietarioConsentito(p2, s, env))) return json({ error: 'vietato' }, 403)
     const { keys } = await env.KV.list({ prefix: `iscr:${p2}:` })
     const iscrizioni: Iscrizione[] = []
     for (const k of keys) {
@@ -252,14 +273,17 @@ export async function handle(req: Request, env: Env): Promise<Response> {
 
   // DELETE /api/iscrizioni/:codice/:id  (organizzatore)
   if (req.method === 'DELETE' && p1 === 'iscrizioni' && p2 && p3) {
-    if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
+    if (!(await proprietarioConsentito(p2, s, env))) return json({ error: 'vietato' }, 403)
     await env.KV.delete(`iscr:${p2}:${p3}`)
     return json({ ok: true })
   }
 
   // POST /api/pubblico/:codice  (organizzatore)
   if (req.method === 'POST' && p1 === 'pubblico' && p2 && !p3) {
-    if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
     let b: Partial<PublicSnapshot>
     try {
       b = (await req.json()) as Partial<PublicSnapshot>
@@ -267,6 +291,7 @@ export async function handle(req: Request, env: Env): Promise<Response> {
       return json({ error: 'JSON non valido' }, 400)
     }
     if (!b.codice || !b.nome || !b.tipologia) return json({ error: 'dati incompleti' }, 400)
+    if (!(await proprietarioConsentito(p2, s, env, { claim: true }))) return json({ error: 'vietato' }, 403)
     const snap = { ...b, updatedAt: b.updatedAt || new Date().toISOString() }
     await env.KV.put(`pubblico:${p2}`, JSON.stringify(snap))
     return json({ ok: true })
@@ -281,7 +306,9 @@ export async function handle(req: Request, env: Env): Promise<Response> {
 
   // DELETE /api/pubblico/:codice  (organizzatore)
   if (req.method === 'DELETE' && p1 === 'pubblico' && p2 && !p3) {
-    if (!autorizzato(req, env)) return json({ error: 'non autorizzato' }, 401)
+    const s = await sessione(req, env)
+    if (!s) return json({ error: 'non autorizzato' }, 401)
+    if (!(await proprietarioConsentito(p2, s, env))) return json({ error: 'vietato' }, 403)
     await env.KV.delete(`pubblico:${p2}`)
     return json({ ok: true })
   }

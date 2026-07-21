@@ -1,5 +1,5 @@
 import { getTournament, teamsOf, groupsOf, matchesOf, saveTournament } from '../db/repositories'
-import { getClient, getReadToken } from './config'
+import { getClient, getSessione } from './config'
 import { etichettaSquadra } from './teams'
 import type { PublicSnapshot } from '../types/public'
 
@@ -51,7 +51,7 @@ export async function pubblicaSeAttivo(tournamentId: string): Promise<void> {
     const t = await getTournament(tournamentId)
     if (!t?.pubblicato) return
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return
-    if (!getReadToken()) return
+    if (!getSessione()) return
     const snap = await buildSnapshot(tournamentId)
     await getClient().pubblicaSnapshot(snap)
   } catch {

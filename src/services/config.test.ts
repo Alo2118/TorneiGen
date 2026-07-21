@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { getSavedApiBaseUrl, getApiBaseUrl, setApiBaseUrl, getReadToken, setReadToken } from './config'
+import { getSavedApiBaseUrl, getApiBaseUrl, setApiBaseUrl } from './config'
 
 describe('config', () => {
   beforeEach(() => localStorage.clear())
@@ -12,12 +12,6 @@ describe('config', () => {
   it('salva e rilegge apiBaseUrl', () => {
     setApiBaseUrl('https://api.esempio.dev')
     expect(getApiBaseUrl()).toBe('https://api.esempio.dev')
-  })
-
-  it('token assente di default, poi salvato', () => {
-    expect(getReadToken()).toBeUndefined()
-    setReadToken('tok')
-    expect(getReadToken()).toBe('tok')
   })
 
   it('getSavedApiBaseUrl ritorna stringa vuota quando non salvato', () => {

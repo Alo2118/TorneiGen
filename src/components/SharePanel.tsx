@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { pubblica, interrompiPubblicazione } from '../services/pubblicazione'
-import { getReadToken } from '../services/config'
+import { getSessione } from '../services/config'
 import { QRCode } from './QRCode'
 import { Button } from './Button'
 import { useToast } from './Toast'
@@ -14,10 +15,11 @@ export function SharePanel({ tournament }: Props) {
   const toast = useToast()
   const [inCorso, setInCorso] = useState(false)
   const link = `${window.location.origin}/pubblico/${tournament.codiceIscrizione}`
+  const sessione = getSessione()
 
   async function handlePubblica() {
-    if (!getReadToken()) {
-      toast('Imposta prima il token in Impostazioni per pubblicare', 'errore')
+    if (!getSessione()) {
+      toast('Accedi per pubblicare', 'errore')
       return
     }
     setInCorso(true)
@@ -69,7 +71,11 @@ export function SharePanel({ tournament }: Props) {
       <section className="share-panel">
         <h2>Condivisione pubblica</h2>
         <p className="muted">Pubblica il tabellone in sola lettura: i giocatori lo vedranno sul telefono col link. Si aggiorna da solo a ogni risultato.</p>
-        <Button type="button" onClick={handlePubblica} disabled={inCorso}>Pubblica</Button>
+        {sessione ? (
+          <Button type="button" onClick={handlePubblica} disabled={inCorso}>Pubblica</Button>
+        ) : (
+          <p className="muted">Accedi per pubblicare il tabellone. <Link to="/accesso">Accedi</Link></p>
+        )}
       </section>
     )
   }
@@ -82,8 +88,13 @@ export function SharePanel({ tournament }: Props) {
       <div className="share-actions">
         <Button type="button" variant="ghost" onClick={copiaLink}>Copia link</Button>
         <Button type="button" variant="ghost" onClick={condividi}>Condividi</Button>
-        <Button type="button" variant="ghost" onClick={handleInterrompi} disabled={inCorso}>Interrompi pubblicazione</Button>
+        {sessione && (
+          <Button type="button" variant="ghost" onClick={handleInterrompi} disabled={inCorso}>Interrompi pubblicazione</Button>
+        )}
       </div>
+      {!sessione && (
+        <p className="muted">Accedi per gestire la pubblicazione. <Link to="/accesso">Accedi</Link></p>
+      )}
       <QRCode value={link} />
     </section>
   )

@@ -89,16 +89,17 @@ export async function verificaJWT(token: string, segreto: string, adesso = Date.
   const parti = token.split('.')
   if (parti.length !== 3) return null
   const [header, body, firma] = parti
-  const attesa = b64url(await hmac(segreto, `${header}.${body}`))
-  if (!confrontoCostante(enc.encode(firma), enc.encode(attesa))) return null
-  let payload: SessioneUtente
   try {
-    payload = JSON.parse(new TextDecoder().decode(deb64url(body))) as SessioneUtente
+    const attesa = b64url(await hmac(segreto, `${header}.${body}`))
+    if (!confrontoCostante(enc.encode(firma), enc.encode(attesa))) return null
+    const payload = JSON.parse(new TextDecoder().decode(deb64url(body))) as SessioneUtente
+    if (typeof payload.exp !== 'number' || payload.exp * 1000 < adesso) return null
+    return payload
   } catch {
+    // Segreto mancante/malformato (es. AUTH_SECRET vuoto -> crypto.subtle.importKey lancia DataError)
+    // o payload non decodificabile: mai propagare, trattato come "non autenticato".
     return null
   }
-  if (typeof payload.exp !== 'number' || payload.exp * 1000 < adesso) return null
-  return payload
 }
 
 export function estraiBearer(req: Request): string | null {
