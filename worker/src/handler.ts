@@ -16,6 +16,8 @@ export interface OrgStore {
   delete(codice: string): Promise<void>
   // Elenco dei documenti org. societaId null = tutti (admin); altrimenti solo quelli della società.
   elenco(societaId: string | null): Promise<OrgRecord[]>
+  // Assegna la società a un documento org esistente (no-op se il documento non esiste).
+  assegnaSocieta(codice: string, societaId: string): Promise<void>
 }
 
 export interface UtenteRecord {
@@ -219,6 +221,21 @@ export async function handle(req: Request, env: Env): Promise<Response> {
     return json({ ok: true })
   }
 
+  // POST /api/admin/tornei/:codice/proprieta  (assegna un torneo a una società)
+  if (req.method === 'POST' && p1 === 'admin' && p2 === 'tornei' && p3 && parts[4] === 'proprieta') {
+    const g = await guardiaAdmin(req, env)
+    if (g instanceof Response) return g
+    let b: { societaId?: unknown }
+    try { b = (await req.json()) as typeof b } catch { return json({ error: 'JSON non valido' }, 400) }
+    const societaId = typeof b.societaId === 'string' ? b.societaId : ''
+    if (!societaId) return json({ error: 'società mancante' }, 400)
+    if (!(await env.SOCIETA.perId(societaId))) return json({ error: 'società inesistente' }, 400)
+    // Proprietà su entrambe le facce: owner in KV (pubblicazione) + societa_id sul doc (sync/elenco).
+    await env.KV.put(`owner:${p3}`, societaId)
+    await env.ORG.assegnaSocieta(p3, societaId)
+    return json({ ok: true })
+  }
+
   // POST /api/torneo  (organizzatore)
   if (req.method === 'POST' && p1 === 'torneo' && !p2) {
     const s = await sessione(req, env)
@@ -345,7 +362,7 @@ export async function handle(req: Request, env: Env): Promise<Response> {
       } catch {
         // documento illeggibile: si mostra almeno il codice come nome
       }
-      return { codice: r.codice, nome, tipologia, data, updatedAt: r.updatedAt }
+      return { codice: r.codice, nome, tipologia, data, updatedAt: r.updatedAt, societaId: r.societaId ?? null }
     })
     return json({ tornei })
   }

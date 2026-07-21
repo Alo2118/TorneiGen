@@ -20,7 +20,11 @@ function renderScreen() {
 }
 
 function stubFetch(
-  extra: { abilitaChiamata?: (id: string, body: unknown) => void; eliminaChiamata?: (id: string) => void } = {},
+  extra: {
+    abilitaChiamata?: (id: string, body: unknown) => void
+    eliminaChiamata?: (id: string) => void
+    assegnaChiamata?: (codice: string, body: unknown) => void
+  } = {},
 ) {
   return vi.fn(async (url: string, opts?: RequestInit) => {
     const u = String(url)
@@ -28,6 +32,17 @@ function stubFetch(
     if (match) {
       extra.abilitaChiamata?.(match[1], opts?.body ? JSON.parse(opts.body as string) : undefined)
       return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+    const prop = u.match(/\/api\/admin\/tornei\/([^/]+)\/proprieta$/)
+    if (prop) {
+      extra.assegnaChiamata?.(prop[1], opts?.body ? JSON.parse(opts.body as string) : undefined)
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+    if (/\/api\/org$/.test(u)) {
+      return new Response(
+        JSON.stringify({ tornei: [{ codice: 'ABC', nome: 'Coppa Estate', tipologia: '2x2', data: '2026-07-20', updatedAt: '', societaId: null }] }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
     }
     const del = u.match(/\/api\/admin\/utenti\/([^/]+)$/)
     if (del && opts?.method === 'DELETE') {
@@ -111,6 +126,19 @@ describe('AdminScreen', () => {
     await userEvent.click(within(riga).getByRole('button', { name: /elimina/i }))
 
     expect(eliminaChiamata).toHaveBeenCalledWith('u1')
+  })
+
+  it('assegna la proprietà di un torneo a una società', async () => {
+    vi.mocked(utenteCorrente).mockResolvedValue({ email: 'admin@x.it', ruolo: 'admin', societaId: null })
+    const assegnaChiamata = vi.fn()
+    vi.stubGlobal('fetch', stubFetch({ assegnaChiamata }))
+    renderScreen()
+
+    const riga = (await screen.findByText('Coppa Estate')).closest('li') as HTMLElement
+    await userEvent.selectOptions(within(riga).getByLabelText(/^Società per Coppa Estate/i), 's1')
+    await userEvent.click(within(riga).getByRole('button', { name: /assegna/i }))
+
+    expect(assegnaChiamata).toHaveBeenCalledWith('ABC', { societaId: 's1' })
   })
 
   it('l\'admin non vede "Elimina" sulla propria riga (anti-lockout)', async () => {

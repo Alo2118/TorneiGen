@@ -40,6 +40,7 @@ export interface TorneoCloud {
   tipologia?: string
   data?: string
   updatedAt: string
+  societaId?: string | null
 }
 
 export interface RegistrationsClient {
@@ -63,6 +64,7 @@ export interface RegistrationsClient {
   creaSocieta(nome: string): Promise<Societa>
   abilitaUtente(id: string, societaId: string): Promise<void>
   eliminaUtente(id: string): Promise<void>
+  assegnaProprietaTorneo(codice: string, societaId: string): Promise<void>
 }
 
 export function creaClient(config: { baseUrl: string; sessione?: string }): RegistrationsClient {
@@ -144,6 +146,9 @@ export function creaClient(config: { baseUrl: string; sessione?: string }): Regi
     },
     async eliminaUtente(id) {
       await call('DELETE', `/api/admin/utenti/${id}`, { sessione: true })
+    },
+    async assegnaProprietaTorneo(codice, societaId) {
+      await call('POST', `/api/admin/tornei/${codice}/proprieta`, { body: { societaId }, sessione: true })
     },
     async deleteOrg(codice) {
       const res = await fetch(`${base}/api/org/${codice}`, { method: 'DELETE', headers: headerW() })

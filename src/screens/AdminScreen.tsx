@@ -4,7 +4,7 @@ import { Field } from '../components/Field'
 import { Button } from '../components/Button'
 import { getClient } from '../services/config'
 import { utenteCorrente } from '../services/auth'
-import type { UtenteAmministrato, Societa } from '../services/registrations-api'
+import type { UtenteAmministrato, Societa, TorneoCloud } from '../services/registrations-api'
 
 const STATO_LABEL: Record<'utente' | 'admin', string> = { utente: 'Utente', admin: 'Admin' }
 
@@ -15,6 +15,7 @@ export function AdminScreen() {
 
   const [utenti, setUtenti] = useState<UtenteAmministrato[] | null>(null)
   const [societa, setSocieta] = useState<Societa[] | null>(null)
+  const [tornei, setTornei] = useState<TorneoCloud[] | null>(null)
   const [caricando, setCaricando] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const [nuovaSocieta, setNuovaSocieta] = useState('')
@@ -36,9 +37,14 @@ export function AdminScreen() {
     setCaricando(true)
     setErrore(null)
     try {
-      const [u, s] = await Promise.all([getClient().elencoUtenti(), getClient().elencoSocieta()])
+      const [u, s, t] = await Promise.all([
+        getClient().elencoUtenti(),
+        getClient().elencoSocieta(),
+        getClient().elencoOrg(),
+      ])
       setUtenti(u)
       setSocieta(s)
+      setTornei(t)
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore imprevisto')
     } finally {
@@ -69,6 +75,16 @@ export function AdminScreen() {
     setErrore(null)
     try {
       await getClient().abilitaUtente(utenteId, societaId)
+      await carica()
+    } catch (err) {
+      setErrore(err instanceof Error ? err.message : 'Errore imprevisto')
+    }
+  }
+
+  async function handleAssegna(codice: string, societaId: string) {
+    setErrore(null)
+    try {
+      await getClient().assegnaProprietaTorneo(codice, societaId)
       await carica()
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore imprevisto')
@@ -128,6 +144,19 @@ export function AdminScreen() {
       </div>
 
       <div className="registrations-import">
+        <h2>Tornei</h2>
+        <p className="muted">Assegna la proprietà di un torneo a una società.</p>
+        {tornei && tornei.length === 0 && <p className="muted">Nessun torneo nel cloud</p>}
+        {tornei && tornei.length > 0 && (
+          <ul className="registrations-import-list">
+            {tornei.map((t) => (
+              <TorneoRiga key={t.codice} torneo={t} societaList={societa ?? []} onAssegna={handleAssegna} />
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="registrations-import">
         <h2>Utenti</h2>
         {caricando && <p className="muted">Caricamento…</p>}
         {utenti && utenti.length === 0 && <p className="muted">Nessun utente</p>}
@@ -147,6 +176,61 @@ export function AdminScreen() {
         )}
       </div>
     </section>
+  )
+}
+
+function TorneoRiga({
+  torneo,
+  societaList,
+  onAssegna,
+}: {
+  torneo: TorneoCloud
+  societaList: Societa[]
+  onAssegna: (codice: string, societaId: string) => Promise<void>
+}) {
+  const [scelta, setScelta] = useState('')
+  const [inviando, setInviando] = useState(false)
+
+  const societaAttuale = societaList.find((s) => s.id === torneo.societaId)?.nome
+
+  async function assegna() {
+    if (!scelta) return
+    setInviando(true)
+    try {
+      await onAssegna(torneo.codice, scelta)
+    } finally {
+      setInviando(false)
+    }
+  }
+
+  return (
+    <li className="registrations-import-item">
+      <div>
+        <strong>{torneo.nome}</strong>
+        {torneo.tipologia ? ` — ${torneo.tipologia}` : ''} — {societaAttuale ? `società: ${societaAttuale}` : 'nessuna società'}
+      </div>
+      <div className="registrations-actions">
+        <label className="field" htmlFor={`torneo-societa-${torneo.codice}`}>
+          <span className="field-label">{`Società per ${torneo.nome}`}</span>
+          <select
+            id={`torneo-societa-${torneo.codice}`}
+            className="field-input"
+            value={scelta}
+            onChange={(e) => setScelta(e.target.value)}
+          >
+            <option value="">— scegli società —</option>
+            {societaList.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button onClick={assegna} disabled={inviando || !scelta}>
+          Assegna
+        </Button>
+      </div>
+    </li>
   )
 }
 

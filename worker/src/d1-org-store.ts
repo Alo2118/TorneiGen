@@ -46,5 +46,8 @@ export function d1OrgStore(db: D1Like): OrgStore {
       const { results } = await q.all<OrgRecord>()
       return results
     },
+    async assegnaSocieta(codice, societaId) {
+      await db.prepare('UPDATE organizzazioni SET societa_id = ? WHERE codice = ?').bind(societaId, codice).run()
+    },
   }
 }

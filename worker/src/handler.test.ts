@@ -691,5 +691,32 @@ describe('handle', () => {
       expect(r.status).toBe(400)
       expect((await r.json()).error).toMatch(/te stesso/i)
     })
+
+    const soc = [{ id: 'soc-hdr', nome: 'HDR', creato_il: '' }]
+
+    it('POST /api/admin/tornei/:codice/proprieta assegna owner (KV) e societa_id (doc)', async () => {
+      const e = env({}, [orgRow({ codice: 'ABC', societaId: null })], undefined, soc)
+      const r = await handle(req('POST', '/api/admin/tornei/ABC/proprieta', { headers: await authAdmin(), body: { societaId: 'soc-hdr' } }), e)
+      expect(r.status).toBe(200)
+      expect(await e.KV.get('owner:ABC')).toBe('soc-hdr')
+      expect((await e.ORG.get('ABC'))?.societaId).toBe('soc-hdr')
+    })
+
+    it('POST /api/admin/tornei/:codice/proprieta con società inesistente -> 400', async () => {
+      const e = env({}, [orgRow({ codice: 'ABC' })], undefined, soc)
+      const r = await handle(req('POST', '/api/admin/tornei/ABC/proprieta', { headers: await authAdmin(), body: { societaId: 'nope' } }), e)
+      expect(r.status).toBe(400)
+      expect(await e.KV.get('owner:ABC')).toBeNull()
+    })
+
+    it('POST /api/admin/tornei/:codice/proprieta senza societaId -> 400', async () => {
+      const r = await handle(req('POST', '/api/admin/tornei/ABC/proprieta', { headers: await authAdmin(), body: {} }), env({}, undefined, undefined, soc))
+      expect(r.status).toBe(400)
+    })
+
+    it('POST /api/admin/tornei/:codice/proprieta con utente non admin -> 403', async () => {
+      const r = await handle(req('POST', '/api/admin/tornei/ABC/proprieta', { headers: await authUtente(), body: { societaId: 'soc-hdr' } }), env({}, undefined, undefined, soc))
+      expect(r.status).toBe(403)
+    })
   })
 })

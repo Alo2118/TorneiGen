@@ -17,5 +17,9 @@ export function fakeOrgStore(seed?: OrgRecord[]): OrgStore {
       const tutti = [...m.values()]
       return societaId == null ? tutti : tutti.filter((r) => r.societaId === societaId)
     },
+    async assegnaSocieta(codice, societaId) {
+      const r = m.get(codice)
+      if (r) m.set(codice, { ...r, societaId })
+    },
   }
 }
