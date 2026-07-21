@@ -54,19 +54,22 @@ export async function generaFaseFinale(tournamentId: string): Promise<number> {
       id: `${tournamentId}:${bm.id}`, tournamentId, fase: 'tabellone', round: bm.round,
       posizioneTabellone: bm.index, teamAId: bm.teamAId, teamBId: bm.teamBId, set: [], stato: 'programmata',
     }))
-    // Finalina 3°/4° posto: i perdenti delle due semifinali (round 1, ultimo round 2).
-    if (torneo.finaleTerzoPosto) {
-      const semifinali = tabellone
-        .filter((m) => m.round === 1)
-        .sort((a, b) => (a.posizioneTabellone ?? 0) - (b.posizioneTabellone ?? 0))
+    // Finalina 3°/4° posto: i perdenti delle due semifinali (il penultimo round del
+    // tabellone). Escluso il caso con un bye in semifinale (un solo contendente reale).
+    if (torneo.finaleTerzoPosto && tabellone.length > 0) {
       const ultimoRound = Math.max(...tabellone.map((m) => m.round))
-      if (semifinali.length === 2 && ultimoRound === 2) {
+      const semifinali = tabellone
+        .filter((m) => m.round === ultimoRound - 1)
+        .sort((a, b) => (a.posizioneTabellone ?? 0) - (b.posizioneTabellone ?? 0))
+      const conBye = semifinali.some((m) => (m.teamAId === null) !== (m.teamBId === null))
+      if (semifinali.length === 2 && !conBye) {
         const finalinaId = `${tournamentId}:terzo`
         semifinali[0].perdenteVerso = { matchId: finalinaId, slot: 'A' }
         semifinali[1].perdenteVerso = { matchId: finalinaId, slot: 'B' }
+        // posizione 1 all'ultimo round: la finale è a posizione 0, quindi non collide
         tabellone.push({
           id: finalinaId, tournamentId, fase: 'tabellone', tabelloneTipo: 'terzo',
-          round: 2, posizioneTabellone: 1, teamAId: null, teamBId: null, set: [], stato: 'programmata',
+          round: ultimoRound, posizioneTabellone: 1, teamAId: null, teamBId: null, set: [], stato: 'programmata',
         })
       }
     }

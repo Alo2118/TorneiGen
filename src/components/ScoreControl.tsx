@@ -7,6 +7,9 @@ interface Props {
   regole: RegolePunteggio
   setIniziali: SetScore[]
   onSalva: (set: SetScore[]) => void
+  // Modalità "sempre 3 set" (gironi a set): tutti e 3 i set sono sempre visibili,
+  // anche dopo un 2-0, perché ogni set vale un punto in classifica.
+  tuttiISet?: boolean
 }
 
 function seed(setIniziali: SetScore[], maxSets: number): SetScore[] {
@@ -15,8 +18,8 @@ function seed(setIniziali: SetScore[], maxSets: number): SetScore[] {
   return base.slice(0, maxSets)
 }
 
-function targetSet(index: number, regole: RegolePunteggio): number {
-  return regole.setAlMeglioDi === 3 && index === 2 ? regole.puntiTieBreak : regole.puntiSet
+function targetSet(index: number, regole: RegolePunteggio, treSet: boolean): number {
+  return (treSet || regole.setAlMeglioDi === 3) && index === 2 ? regole.puntiTieBreak : regole.puntiSet
 }
 
 // Quanti set mostrare: si rivela il set successivo solo quando il precedente è
@@ -30,7 +33,7 @@ function setDaMostrare(sets: SetScore[], regole: RegolePunteggio): number {
   for (let i = 0; i < regole.setAlMeglioDi; i++) {
     const s = sets[i]
     if (!s) break
-    const target = targetSet(i, regole)
+    const target = targetSet(i, regole, false)
     const vincitore = setWinner(s, target, regole.vittoriaConDue, regole.cap)
     if (vincitore === 'A') vinteA++
     if (vincitore === 'B') vinteB++
@@ -41,10 +44,11 @@ function setDaMostrare(sets: SetScore[], regole: RegolePunteggio): number {
   return Math.min(visibili, regole.setAlMeglioDi)
 }
 
-export function ScoreControl({ regole, setIniziali, onSalva }: Props) {
-  const [sets, setSets] = useState<SetScore[]>(() => seed(setIniziali, regole.setAlMeglioDi))
+export function ScoreControl({ regole, setIniziali, onSalva, tuttiISet = false }: Props) {
+  const maxSets = tuttiISet ? 3 : regole.setAlMeglioDi
+  const [sets, setSets] = useState<SetScore[]>(() => seed(setIniziali, maxSets))
 
-  const visibili = setDaMostrare(sets, regole)
+  const visibili = tuttiISet ? maxSets : setDaMostrare(sets, regole)
   const setAttivo = visibili - 1
 
   function setPunto(index: number, squadra: 'puntiA' | 'puntiB', raw: string) {
@@ -56,8 +60,8 @@ export function ScoreControl({ regole, setIniziali, onSalva }: Props) {
     <div className="score-control">
       <div className="score-control-sets">
         {sets.slice(0, visibili).map((s, i) => {
-          const target = targetSet(i, regole)
-          const isSpareggio = regole.setAlMeglioDi === 3 && i === 2
+          const target = targetSet(i, regole, tuttiISet)
+          const isSpareggio = (tuttiISet || regole.setAlMeglioDi === 3) && i === 2
           const isSetPoint = Math.max(s.puntiA, s.puntiB) >= target - 1
           const classi = [
             'score-control-set',

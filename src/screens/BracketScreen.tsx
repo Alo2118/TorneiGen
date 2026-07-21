@@ -247,6 +247,7 @@ export function BracketScreen() {
               regole={torneo.regolePunteggio}
               setIniziali={matchInModifica.set}
               onSalva={handleSalva}
+              tuttiISet={matchInModifica.fase === 'girone' && !!torneo.regolePunteggio.gironiPerSet}
             />
           </div>
         </div>

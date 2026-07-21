@@ -45,13 +45,14 @@ export function matchOutcome(
  */
 export function esitoGirone(
   sets: SetScore[],
+  r: RegolePunteggio,
 ): { vincitore: 'A' | 'B' | null; setA: number; setB: number; completa: boolean } {
   let setA = 0
   let setB = 0
   let validi = 0
   sets.slice(0, 3).forEach((s, i) => {
-    const target = i === 2 ? 15 : 21
-    const w = setWinner(s, target, true)
+    const target = i === 2 ? r.puntiTieBreak : r.puntiSet
+    const w = setWinner(s, target, r.vittoriaConDue, r.cap)
     if (w === 'A') { setA++; validi++ }
     else if (w === 'B') { setB++; validi++ }
   })

@@ -23,7 +23,7 @@ export function computeStandings(
 
   // In modalità "punti a set" ogni set vale 1 punto: si giocano sempre 3 set e
   // la classifica è a set vinti. Altrimenti best-of-3 classico (partite vinte).
-  const esito = (sets: SetScore[]) => (r.gironiPerSet ? esitoGirone(sets) : matchOutcome(sets, r))
+  const esito = (sets: SetScore[]) => (r.gironiPerSet ? esitoGirone(sets, r) : matchOutcome(sets, r))
 
   const validi = matches.filter(
     (m) =>

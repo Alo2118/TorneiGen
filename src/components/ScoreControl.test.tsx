@@ -24,6 +24,28 @@ describe('ScoreControl', () => {
     expect(screen.getByLabelText('Punteggio squadra A, set 2')).toBeInTheDocument()
   })
 
+  it('tuttiISet: mostra sempre 3 set anche dopo un 2-0 e li salva tutti', () => {
+    const onSalva = vi.fn()
+    render(<ScoreControl regole={r3} setIniziali={[]} onSalva={onSalva} tuttiISet />)
+    // tutti e 3 i set visibili da subito, senza dover essere 1-1
+    expect(screen.getByLabelText('Punteggio squadra A, set 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Punteggio squadra A, set 2')).toBeInTheDocument()
+    // il terzo set è il tie-break
+    expect(screen.getByText('Tie-break')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Punteggio squadra A, set 1'), { target: { value: '21' } })
+    fireEvent.change(screen.getByLabelText('Punteggio squadra B, set 1'), { target: { value: '10' } })
+    fireEvent.change(screen.getByLabelText('Punteggio squadra A, set 2'), { target: { value: '21' } })
+    fireEvent.change(screen.getByLabelText('Punteggio squadra B, set 2'), { target: { value: '12' } })
+    fireEvent.change(screen.getByLabelText('Punteggio squadra A, set 3'), { target: { value: '15' } })
+    fireEvent.change(screen.getByLabelText('Punteggio squadra B, set 3'), { target: { value: '9' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salva' }))
+    expect(onSalva).toHaveBeenCalledWith([
+      { puntiA: 21, puntiB: 10 },
+      { puntiA: 21, puntiB: 12 },
+      { puntiA: 15, puntiB: 9 },
+    ])
+  })
+
   it('non accetta valori negativi (li porta a 0)', () => {
     const onSalva = vi.fn()
     render(<ScoreControl regole={r} setIniziali={[]} onSalva={onSalva} />)
