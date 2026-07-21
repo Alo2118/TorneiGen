@@ -105,6 +105,24 @@ describe('applyOrgDoc', () => {
     expect(m2.vincitoreId).toBe('c')
   })
 
+  it('ricalcola l\'avanzamento del tabellone dopo il merge (coerenza struttura/risultati)', () => {
+    const doc: OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [
+        { id: 's1', tournamentId: 't1', fase: 'tabellone', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B' },
+        { id: 'f', tournamentId: 't1', fase: 'tabellone', round: 2, posizioneTabellone: 0, teamAId: null, teamBId: null },
+      ],
+      risultati: [], // il cloud non ha ancora il risultato di s1
+    }
+    // s1 è concluso solo in locale: dopo il merge il vincitore deve avanzare in finale
+    const locali: Match[] = [
+      match('s1', { fase: 'tabellone', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B', set: [{ puntiA: 21, puntiB: 10 }], stato: 'conclusa', vincitoreId: 'A' }),
+    ]
+    const res = applyOrgDoc(doc, torneo, locali)
+    const f = res.matches.find((m) => m.id === 'f')!
+    expect(f.teamAId).toBe('A')
+  })
+
   it('inizializza punteggi vuoti per match nuovi e rimuove quelli assenti dal cloud', () => {
     const doc: import('../types/org').OrgDoc = {
       tournament: torneo, teams: [], groups: [],

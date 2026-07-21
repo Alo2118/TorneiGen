@@ -2,6 +2,7 @@ import type { Tournament, Team, Group, Match } from '../engine/types'
 import type { OrgDoc, MatchStruct, RisultatoStruct } from '../types/org'
 import { db } from '../db/database'
 import { getTournament, teamsOf, groupsOf, matchesOf } from '../db/repositories'
+import { propagaTabellone, propagaDoppia } from './results'
 
 function strutturaDaMatch(m: Match): MatchStruct {
   const copia: Partial<Match> = { ...m }
@@ -85,7 +86,17 @@ export function applyOrgDoc(
     orgVersion: localTournament?.orgVersion,
     orgPending: localTournament?.orgPending,
   }
-  return { tournament, teams: doc.teams, groups: doc.groups, matches }
+  // Nel tabellone il vincitore avanza (teamAId/teamBId dei turni successivi sono
+  // stato DERIVATO dai risultati). Dopo il merge ricalcolo l'avanzamento, così la
+  // struttura resta coerente coi risultati qualunque sia la loro provenienza.
+  const haTabellone = matches.some((m) => m.fase === 'tabellone')
+  const haDoppia = matches.some((m) => m.tabelloneTipo !== undefined && m.tabelloneTipo !== 'terzo')
+  const finali = !haTabellone
+    ? matches
+    : haDoppia
+      ? propagaDoppia(matches, tournament.regolePunteggio)
+      : propagaTabellone(matches, tournament.regolePunteggio)
+  return { tournament, teams: doc.teams, groups: doc.groups, matches: finali }
 }
 
 export async function scriviOrgLocale(s: StatoLocaleOrg): Promise<void> {

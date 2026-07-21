@@ -57,12 +57,13 @@ export async function confrontaCloud(
     // se sono solo punteggi, l'Aggiorna li unisce → segnalo aggiornamenti dal cloud.
     if (t.orgPending) {
       let docCloud: OrgDoc
+      let docLocale: OrgDoc
       try {
         docCloud = JSON.parse(record.doc) as OrgDoc
+        docLocale = await buildOrgDoc(tournamentId)
       } catch {
         return { stato: 'errore' }
       }
-      const docLocale = await buildOrgDoc(tournamentId)
       if (strutturaDiverge(docLocale, docCloud)) return { stato: 'conflitto', versioneCloud: record.version }
     }
     return { stato: 'cloud_avanti', versioneCloud: record.version }
@@ -136,7 +137,12 @@ export async function tiraOrg(
   // Conflitto vero solo se le modifiche locali pendenti toccano la STRUTTURA.
   // Se sono solo punteggi, si uniscono (i risultati del cloud vincono per-partita,
   // i miei risultati non ancora sul cloud vengono ri-propagati per convergere).
-  const docLocale = await buildOrgDoc(tournamentId)
+  let docLocale: OrgDoc
+  try {
+    docLocale = await buildOrgDoc(tournamentId)
+  } catch {
+    return { stato: 'errore' }
+  }
   if (t.orgPending && strutturaDiverge(docLocale, doc)) {
     return { stato: 'conflitto', versioneCloud: record.version, docCloud: doc }
   }
