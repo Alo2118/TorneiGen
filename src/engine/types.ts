@@ -65,6 +65,10 @@ export interface Match {
   tabelloneTipo?: 'vincenti' | 'perdenti' | 'finale' | 'golden' | 'terzo'
   vincitoreVerso?: { matchId: string; slot: 'A' | 'B' } | null
   perdenteVerso?: { matchId: string; slot: 'A' | 'B' } | null
+  // Timestamp ISO dell'ultima modifica del RISULTATO (set/stato/annullamento).
+  // Usato per il merge convergente tra dispositivi: a parità di partita vince il
+  // risultato più recente; un annullamento è un "tombstone" con la sua data.
+  risultatoAggiornatoAl?: string
 }
 
 export interface Tournament {

@@ -30,4 +30,8 @@ describe('BracketTree', () => {
     render(<BracketTree matches={m} teamNames={names} variant="statico" />)
     expect(screen.getByRole('button', { name: /adatta/i })).toBeTruthy()
   })
+  it('mostra un hint per esplorare il tabellone (trascina/zoom)', () => {
+    render(<BracketTree matches={m} teamNames={names} variant="statico" />)
+    expect(screen.getByText(/trascina/i)).toBeInTheDocument()
+  })
 })

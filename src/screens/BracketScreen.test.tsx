@@ -59,8 +59,10 @@ describe('BracketScreen', () => {
     await userEvent.click(primoBottone)
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    const piuA = screen.getByRole('button', { name: /aumenta punteggio squadra a, set 1/i })
-    for (let i = 0; i < 21; i++) fireEvent.click(piuA)
+    // Lo ScoreControl usa input numerici (aria-label "Punteggio squadra X, set N"),
+    // non pulsanti +/-: si digita il punteggio direttamente.
+    fireEvent.change(await screen.findByLabelText(/punteggio squadra a, set 1/i), { target: { value: '21' } })
+    fireEvent.change(screen.getByLabelText(/punteggio squadra b, set 1/i), { target: { value: '15' } })
     await userEvent.click(screen.getByRole('button', { name: /salva/i }))
     // Race-tolerant: il dialog può già essersi chiuso prima che l'assert inizi ad
     // osservare (waitForElementToBeRemoved lancerebbe in quel caso). waitFor con

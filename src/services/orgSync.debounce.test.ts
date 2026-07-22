@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { db } from '../db/database'
 import { saveTournament, getTournament } from '../db/repositories'
-import { notificaModificaOrg } from './orgSync'
+import { notificaModificaOrg, onSyncCambiato } from './orgSync'
 import type { RegistrationsClient } from './registrations-api'
 import type { Tournament } from '../engine/types'
 
@@ -52,6 +52,21 @@ describe('notificaModificaOrg', () => {
     })
     // Drena il timer di debounce schedulato, per non lasciarlo pendente.
     await vi.advanceTimersByTimeAsync(1600)
+  })
+
+  it('notifica onSyncCambiato dopo che il push automatico è concluso (A2: esito non silenzioso)', async () => {
+    localStorage.setItem('sessione', 'wt')
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const eventi: string[] = []
+    const off = onSyncCambiato((tid) => eventi.push(tid))
+    const putOrg = vi.fn(async () => ({ conflitto: true as const, version: 9 })) // push in conflitto
+    notificaModificaOrg('t1', fakeClient(putOrg))
+    await vi.advanceTimersByTimeAsync(1600)
+    await vi.waitFor(() => {
+      expect(putOrg).toHaveBeenCalledTimes(1)
+      expect(eventi).toContain('t1') // la UI viene avvisata anche se il push fallisce
+    })
+    off()
   })
 
   it('coalizza più chiamate ravvicinate in un solo push', async () => {

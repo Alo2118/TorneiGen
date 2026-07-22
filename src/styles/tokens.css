@@ -37,6 +37,12 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .btn {
   font: inherit;
   font-weight: 600;
+  /* min-height 44px = target touch minimo raccomandato (WCAG/Apple) */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space) / 2);
   padding: calc(var(--space) * 1.25) calc(var(--space) * 2);
   border-radius: var(--radius);
   border: 1px solid transparent;
@@ -56,6 +62,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .field-label { font-weight: 500; color: var(--muted); }
 .field-input {
   font: inherit;
+  /* >=16px: sotto questa soglia iOS Safari fa auto-zoom sull'input al focus,
+     facendo "saltare" la pagina di iscrizione a ogni campo. */
+  font-size: max(16px, 1rem);
   padding: var(--space) calc(var(--space) * 1.25);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -451,12 +460,18 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   padding: calc(var(--space) * 3);
   max-width: 480px;
   width: 100%;
-  max-height: calc(100vh - var(--space) * 4);
+  /* dvh (non vh): tiene conto della address-bar mobile dinamica */
+  max-height: calc(100dvh - var(--space) * 4);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: calc(var(--space) * 2);
   box-shadow: 0 20px 60px color-mix(in srgb, var(--ink) 25%, transparent);
+}
+@media (max-width: 720px) {
+  /* Ancora il pannello in alto: aprendo la tastiera numerica per il punteggio,
+     il pulsante "Salva" resta raggiungibile scrollando invece di finire coperto. */
+  .modal-overlay { align-items: flex-start; }
 }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space); }
 .modal-head h2 { margin: 0; font-size: 1.1rem; }
@@ -662,7 +677,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   }
   .nav-links { display: none; }
   .nav-footer { margin-top: 0; margin-left: auto; }
-  .shell-main { padding-bottom: calc(var(--space) * 9); }
+  .shell-main { padding-bottom: calc(var(--space) * 9 + env(safe-area-inset-bottom)); }
   .tourn-header { padding: calc(var(--space) * 1.5) calc(var(--space) * 2); }
   .home { padding: calc(var(--space) * 2); }
   .riepilogo { padding: calc(var(--space) * 2); }
@@ -671,6 +686,10 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   .teams { padding: calc(var(--space) * 2); }
   .team-form { padding: calc(var(--space) * 2); }
   .registrations { padding: calc(var(--space) * 2); }
+  /* Nomi squadra lunghi vanno a capo invece di allargare le colonne fuori
+     schermo: così più campi restano visibili senza scroll orizzontale infinito. */
+  .calendar-grid-table td { white-space: normal; }
+  .calendar-grid-match-teams { min-width: 8ch; }
 
   .bottom-bar {
     display: flex;
@@ -681,20 +700,28 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
     justify-content: space-around;
     background: var(--surface);
     border-top: 1px solid var(--line);
-    padding: var(--space) 0;
+    /* padding inferiore + safe-area: l'ultima riga di icone non finisce sotto
+       la home-indicator/gesture-bar degli iPhone con notch. */
+    padding: var(--space) 0 calc(var(--space) + env(safe-area-inset-bottom));
     z-index: 10;
   }
   .bottom-bar-link {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 2px;
     flex: 1;
+    min-width: 0;
+    min-height: 44px;
     padding: calc(var(--space) / 2);
     color: var(--muted);
     text-decoration: none;
     font-size: .7rem;
   }
+  /* Rete di sicurezza sui telefoni stretti (7 voci): la label non rompe il layout,
+     al massimo si tronca con ellissi. L'icona sopra resta sempre leggibile. */
+  .bottom-bar-link .nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bottom-bar-link[aria-current="page"] { color: var(--sea); }
 }
 
@@ -723,7 +750,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 
 @media (max-width: 720px) {
   .toaster {
-    bottom: calc(var(--space) * 9);
+    bottom: calc(var(--space) * 9 + env(safe-area-inset-bottom));
     right: var(--space);
     left: var(--space);
     max-width: none;
@@ -770,13 +797,19 @@ button.match-box:hover { border-color: var(--sea); }
   margin-bottom: var(--space);
 }
 .bracket-tree-controls button {
-  min-width: 36px;
+  min-width: 44px;
+  min-height: 44px;
   padding: calc(var(--space) * 0.5) var(--space);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--ink);
   cursor: pointer;
+}
+.bracket-tree-hint {
+  margin: 0 0 var(--space);
+  font-size: .8rem;
+  color: var(--muted);
 }
 .bracket-tree-viewport {
   overflow: hidden;
@@ -825,8 +858,9 @@ button.match-box:hover { border-color: var(--sea); }
 .calendar-grid-match { display: flex; flex-direction: column; gap: 2px; }
 .calendar-grid-match-teams { font-size: 0.9rem; }
 .calendar-grid-match-score { font-size: 0.85rem; color: var(--muted); }
-.calendar-grid-match-actions { display: flex; gap: var(--space); margin-top: 2px; }
-.calendar-grid-action { font-size: 0.75rem; padding: 2px 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); cursor: pointer; }
+.calendar-grid-match-actions { display: flex; gap: var(--space); margin-top: calc(var(--space) / 2); }
+/* Azioni più toccate dall'organizzatore a bordo campo: target ~40px, non 20px. */
+.calendar-grid-action { font-size: 0.8rem; min-height: 40px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); cursor: pointer; }
 .calendar-grid-match-drag { cursor: grab; touch-action: none; user-select: none; }
 .calendar-grid-match-dragging { opacity: 0.5; }
 .calendar-grid-cell-evidenza { outline: 2px dashed var(--sea); outline-offset: -2px; }

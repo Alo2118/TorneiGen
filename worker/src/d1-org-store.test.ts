@@ -33,17 +33,28 @@ function fakeD1(rowByCodice: Record<string, OrgRecord> = {}) {
               return { results: [] as T[] }
             },
             async run() {
-              if (/^insert into organizzazioni/i.test(sql)) {
-                const [codice, doc, version, updatedAt, societaId] = binds as [
-                  string,
-                  string,
-                  number,
-                  string,
-                  string | null,
-                ]
+              // INSERT ... ON CONFLICT(codice) DO NOTHING  (putSeVersione base 0)
+              if (/^insert into organizzazioni.*do nothing/i.test(sql)) {
+                const [codice, doc, version, updatedAt, societaId] = binds as [string, string, number, string, string | null]
+                if (rowByCodice[codice]) return { meta: { changes: 0 } }
                 rowByCodice[codice] = { codice, doc, version, updatedAt, societaId: societaId ?? null }
+                return { meta: { changes: 1 } }
               }
-              return {}
+              // INSERT ... ON CONFLICT DO UPDATE  (put upsert incondizionato)
+              if (/^insert into organizzazioni/i.test(sql)) {
+                const [codice, doc, version, updatedAt, societaId] = binds as [string, string, number, string, string | null]
+                rowByCodice[codice] = { codice, doc, version, updatedAt, societaId: societaId ?? null }
+                return { meta: { changes: 1 } }
+              }
+              // UPDATE ... SET doc = ? ... WHERE codice = ? AND version = ?  (putSeVersione base>0)
+              if (/^update organizzazioni set doc/i.test(sql)) {
+                const [doc, version, updatedAt, societaId, codice, base] = binds as [string, number, string, string | null, string, number]
+                const r = rowByCodice[codice]
+                if (!r || r.version !== base) return { meta: { changes: 0 } }
+                rowByCodice[codice] = { codice, doc, version, updatedAt, societaId: societaId ?? null }
+                return { meta: { changes: 1 } }
+              }
+              return { meta: { changes: 0 } }
             },
           }
         },
@@ -95,6 +106,35 @@ describe('d1OrgStore', () => {
     await store.put({ codice: 'GHI', doc: '{}', version: 1, updatedAt: 't1', societaId: null })
     const row2 = await store.get('GHI')
     expect(row2?.societaId).toBeNull()
+  })
+
+  it('putSeVersione con base 0 crea se assente e rifiuta se già esiste (INSERT DO NOTHING atomico)', async () => {
+    const db = fakeD1()
+    const store = d1OrgStore(db)
+    expect(await store.putSeVersione({ codice: 'ABC', doc: '{"a":1}', version: 1, updatedAt: 't1', societaId: 's1' }, 0)).toBe(true)
+    expect((await store.get('ABC'))?.version).toBe(1)
+    // seconda scrittura dalla stessa base 0: il documento ora esiste → conflitto
+    expect(await store.putSeVersione({ codice: 'ABC', doc: '{"b":2}', version: 1, updatedAt: 't2', societaId: 's1' }, 0)).toBe(false)
+    expect((await store.get('ABC'))?.doc).toBe('{"a":1}')
+  })
+
+  it('putSeVersione aggiorna solo se la versione base combacia (UPDATE condizionato atomico)', async () => {
+    const db = fakeD1({ ABC: { codice: 'ABC', doc: '{}', version: 5, updatedAt: 't0', societaId: 's1' } })
+    const store = d1OrgStore(db)
+    // base sbagliata → nessuna scrittura
+    expect(await store.putSeVersione({ codice: 'ABC', doc: '{"x":1}', version: 5, updatedAt: 't1', societaId: 's1' }, 4)).toBe(false)
+    expect((await store.get('ABC'))?.version).toBe(5)
+    // base giusta → scrive
+    expect(await store.putSeVersione({ codice: 'ABC', doc: '{"x":1}', version: 6, updatedAt: 't1', societaId: 's1' }, 5)).toBe(true)
+    expect((await store.get('ABC'))?.version).toBe(6)
+  })
+
+  it('putSeVersione previene il lost-update: seconda scrittura dalla base stantia va in conflitto', async () => {
+    const db = fakeD1({ ABC: { codice: 'ABC', doc: '{}', version: 5, updatedAt: 't0', societaId: 's1' } })
+    const store = d1OrgStore(db)
+    expect(await store.putSeVersione({ codice: 'ABC', doc: '{"a":1}', version: 6, updatedAt: 't1', societaId: 's1' }, 5)).toBe(true)
+    expect(await store.putSeVersione({ codice: 'ABC', doc: '{"b":2}', version: 6, updatedAt: 't2', societaId: 's1' }, 5)).toBe(false)
+    expect((await store.get('ABC'))?.doc).toBe('{"a":1}')
   })
 
   it('elenco(null) seleziona tutte le organizzazioni, senza WHERE', async () => {

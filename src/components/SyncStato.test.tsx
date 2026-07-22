@@ -3,11 +3,24 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SyncStato } from './SyncStato'
 
-vi.mock('../services/orgSync', () => ({ confrontaCloud: vi.fn(), tiraOrg: vi.fn() }))
+let listener: ((tid: string) => void) | null = null
+vi.mock('../services/orgSync', () => ({
+  confrontaCloud: vi.fn(),
+  tiraOrg: vi.fn(),
+  onSyncCambiato: (l: (tid: string) => void) => {
+    listener = l
+    return () => {
+      listener = null
+    }
+  },
+}))
 import { confrontaCloud, tiraOrg } from '../services/orgSync'
 
 describe('SyncStato', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    listener = null
+  })
 
   it('segnala gli aggiornamenti dal cloud con il pulsante Aggiorna', async () => {
     vi.mocked(confrontaCloud).mockResolvedValue({ stato: 'cloud_avanti', versioneCloud: 5 })
@@ -38,5 +51,22 @@ describe('SyncStato', () => {
     const { container } = render(<SyncStato tournamentId="t1" />)
     await waitFor(() => expect(confrontaCloud).toHaveBeenCalled())
     expect(container.querySelector('.sync-stato')).toBeNull()
+  })
+
+  it('mostra lo stato di errore (A8: sync ferma, es. sessione scaduta)', async () => {
+    vi.mocked(confrontaCloud).mockResolvedValue({ stato: 'errore' })
+    render(<SyncStato tournamentId="t1" />)
+    expect(await screen.findByText(/sincronizzazione non riuscita/i)).toBeInTheDocument()
+  })
+
+  it('si aggiorna quando arriva un evento onSyncCambiato (A7: reattività dopo modifica locale)', async () => {
+    vi.mocked(confrontaCloud)
+      .mockResolvedValueOnce({ stato: 'inpari', versioneCloud: 1 })
+      .mockResolvedValue({ stato: 'locale_pendente', versioneCloud: 1 })
+    render(<SyncStato tournamentId="t1" />)
+    await screen.findByText(/sincronizzato/i)
+    // simula una modifica locale che emette l'evento per il torneo
+    listener?.('t1')
+    await waitFor(() => expect(screen.getByText(/da sincronizzare/i)).toBeInTheDocument())
   })
 })

@@ -16,6 +16,9 @@ export interface RisultatoStruct {
   set: SetScore[]
   vincitoreId?: string | null
   stato: Match['stato']
+  // Timestamp ISO dell'ultima modifica del risultato: consente il merge by-time
+  // e i tombstone (annullamenti) che convergono tra dispositivi.
+  risultatoAggiornatoAl?: string
 }
 
 export interface OrgDoc {

@@ -12,9 +12,11 @@ function strutturaDaMatch(m: Match): MatchStruct {
   return copia as MatchStruct
 }
 
-// Una partita ha un esito da sincronizzare se ha almeno un set o non è più programmata.
-function haRisultato(m: { set: Match['set']; stato: Match['stato'] }): boolean {
-  return m.set.length > 0 || m.stato !== 'programmata'
+// Una partita ha un esito da sincronizzare se ha almeno un set, non è più
+// programmata, oppure è stata toccata (ha un timestamp): quest'ultimo caso è il
+// "tombstone" di un annullamento, che deve convergere sull'altro dispositivo.
+function haRisultato(m: { set: Match['set']; stato: Match['stato']; risultatoAggiornatoAl?: string }): boolean {
+  return m.set.length > 0 || m.stato !== 'programmata' || m.risultatoAggiornatoAl != null
 }
 
 /**
@@ -26,12 +28,24 @@ function haRisultato(m: { set: Match['set']; stato: Match['stato'] }): boolean {
 export function strutturaDiverge(a: OrgDoc, b: OrgDoc): boolean {
   const perId = <T extends { id: string }>(xs: T[] | undefined): T[] =>
     [...(xs ?? [])].sort((x, y) => x.id.localeCompare(y.id))
+  // Nel tabellone gli occupanti (teamAId/teamBId) NON sono struttura ma stato
+  // derivato dai risultati: round 1 dal ranking dei gironi, round successivi
+  // dall'avanzamento dei vincitori. Confrontarli genererebbe falsi conflitti tra
+  // dispositivi che hanno inserito risultati diversi. La FORMA del tabellone
+  // (numero di slot, round, posizione, tipo) resta invece strutturale.
+  const normStruct = (s: MatchStruct): MatchStruct => {
+    if (s.fase !== 'tabellone') return s
+    const copia: Partial<MatchStruct> = { ...s }
+    delete copia.teamAId
+    delete copia.teamBId
+    return copia as MatchStruct
+  }
   const norm = (d: OrgDoc): string =>
     JSON.stringify({
       tournament: d.tournament ?? null,
       teams: perId(d.teams),
       groups: perId(d.groups),
-      struttura: perId(d.struttura),
+      struttura: perId(d.struttura).map(normStruct),
     })
   return norm(a) !== norm(b)
 }
@@ -47,7 +61,7 @@ export async function buildOrgDoc(tournamentId: string): Promise<OrgDoc> {
   const tournament: Tournament = { ...t, pubblicato: undefined, orgVersion: undefined, orgPending: undefined }
   const risultati: RisultatoStruct[] = matches
     .filter(haRisultato)
-    .map((m) => ({ id: m.id, set: m.set, vincitoreId: m.vincitoreId ?? null, stato: m.stato }))
+    .map((m) => ({ id: m.id, set: m.set, vincitoreId: m.vincitoreId ?? null, stato: m.stato, risultatoAggiornatoAl: m.risultatoAggiornatoAl }))
   return { tournament, teams, groups, struttura: matches.map(strutturaDaMatch), risultati }
 }
 
@@ -66,19 +80,30 @@ export function applyOrgDoc(
   const perId = new Map(localMatches.map((m) => [m.id, m]))
   const risultatiCloud = new Map((doc.risultati ?? []).map((x) => [x.id, x]))
   const matches: Match[] = doc.struttura.map((s) => {
-    // Merge per-partita: il risultato dal cloud vince se presente, altrimenti
-    // si tiene quello locale (unione senza perdite tra i due dispositivi).
+    // Merge per-partita convergente: quando entrambi i dispositivi hanno un
+    // esito per la stessa partita vince il PIÙ RECENTE (per timestamp); se solo
+    // uno dei due ce l'ha, si tiene quello (unione senza perdite). A parità o in
+    // assenza di timestamp (dati pre-timestamp) prevale il cloud, per determinismo.
     const cloud = risultatiCloud.get(s.id)
-    if (cloud) {
-      return { ...s, set: cloud.set, vincitoreId: cloud.vincitoreId ?? null, stato: cloud.stato }
-    }
     const locale = perId.get(s.id)
-    return {
-      ...s,
-      set: locale?.set ?? [],
-      vincitoreId: locale?.vincitoreId ?? null,
-      stato: locale?.stato ?? 'programmata',
+    const vinceLocale =
+      locale != null &&
+      (cloud == null ||
+        (locale.risultatoAggiornatoAl != null &&
+          (cloud.risultatoAggiornatoAl == null || locale.risultatoAggiornatoAl > cloud.risultatoAggiornatoAl)))
+    if (vinceLocale) {
+      return {
+        ...s,
+        set: locale.set,
+        vincitoreId: locale.vincitoreId ?? null,
+        stato: locale.stato,
+        risultatoAggiornatoAl: locale.risultatoAggiornatoAl,
+      }
     }
+    if (cloud) {
+      return { ...s, set: cloud.set, vincitoreId: cloud.vincitoreId ?? null, stato: cloud.stato, risultatoAggiornatoAl: cloud.risultatoAggiornatoAl }
+    }
+    return { ...s, set: [], vincitoreId: null, stato: 'programmata' }
   })
   const tournament: Tournament = {
     ...doc.tournament,

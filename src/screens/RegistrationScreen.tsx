@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { getClient } from '../services/config'
+import { newId } from '../engine/id'
 import { numeroGiocatori, validaSquadra } from '../services/teams'
 import { Field } from '../components/Field'
 import { Button } from '../components/Button'
@@ -25,6 +26,10 @@ export function RegistrationScreen() {
   const [inviando, setInviando] = useState(false)
   const [inviata, setInviata] = useState(false)
   const [consenso, setConsenso] = useState(false)
+  // Chiave di idempotenza: stabile tra i tentativi di uno stesso invio (un retry
+  // di rete non crea un duplicato), rigenerata dopo un invio riuscito così una
+  // seconda iscrizione dallo stesso dispositivo non sovrascrive la prima.
+  const idempotencyKey = useRef(newId())
 
   useEffect(() => {
     let attivo = true
@@ -89,8 +94,9 @@ export function RegistrationScreen() {
     setErrore(null)
     setInviando(true)
     try {
-      await getClient().inviaIscrizione(codice, { nomeSquadra: nome, giocatori: players })
+      await getClient().inviaIscrizione(codice, { nomeSquadra: nome, giocatori: players, idempotencyKey: idempotencyKey.current })
       setInviata(true)
+      idempotencyKey.current = newId() // prossima iscrizione = nuova chiave
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore imprevisto')
     } finally {
