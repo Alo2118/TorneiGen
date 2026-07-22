@@ -14,6 +14,11 @@ export interface D1Like {
   prepare(sql: string): D1Prepared
 }
 
+// Numero di righe modificate dall'ultima statement (D1 espone res.meta.changes).
+function cambi(res: unknown): number {
+  return (res as { meta?: { changes?: number } })?.meta?.changes ?? 0
+}
+
 export function d1OrgStore(db: D1Like): OrgStore {
   return {
     async get(codice) {
@@ -33,6 +38,28 @@ export function d1OrgStore(db: D1Like): OrgStore {
         )
         .bind(row.codice, row.doc, row.version, row.updatedAt, row.societaId ?? null)
         .run()
+    },
+    async putSeVersione(row, base) {
+      // Compare-and-set in una singola statement atomica (SQLite/D1): niente
+      // finestra tra "leggi versione" e "scrivi" in cui due dispositivi possano
+      // entrambi passare il controllo e sovrascriversi (lost-update).
+      if (base === 0) {
+        // Il documento non deve esistere: crea solo se assente.
+        const res = await db
+          .prepare(
+            'INSERT INTO organizzazioni (codice, doc, version, updatedAt, societa_id) VALUES (?, ?, ?, ?, ?) ' +
+              'ON CONFLICT(codice) DO NOTHING',
+          )
+          .bind(row.codice, row.doc, row.version, row.updatedAt, row.societaId ?? null)
+          .run()
+        return cambi(res) > 0
+      }
+      // Aggiorna solo se la versione corrente combacia con la base attesa.
+      const res = await db
+        .prepare('UPDATE organizzazioni SET doc = ?, version = ?, updatedAt = ?, societa_id = ? WHERE codice = ? AND version = ?')
+        .bind(row.doc, row.version, row.updatedAt, row.societaId ?? null, row.codice, base)
+        .run()
+      return cambi(res) > 0
     },
     async delete(codice) {
       await db.prepare('DELETE FROM organizzazioni WHERE codice = ?').bind(codice).run()

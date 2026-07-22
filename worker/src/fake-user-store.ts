@@ -13,7 +13,11 @@ export function fakeUserStore(seed?: UtenteRecord[]): UserStore {
       return r ? { ...r } : null
     },
     async crea(u) {
-      m.set(u.id, { ...u, email: norm(u.email) })
+      // Parità col vincolo UNIQUE(email) di D1: due utenti con la stessa email
+      // non possono coesistere (in prod la seconda INSERT lancerebbe).
+      const email = norm(u.email)
+      for (const r of m.values()) if (norm(r.email) === email) throw new Error('email già registrata')
+      m.set(u.id, { ...u, email })
     },
     async abilita(id, societaId, abilitato) {
       const r = m.get(id)
@@ -23,7 +27,10 @@ export function fakeUserStore(seed?: UtenteRecord[]): UserStore {
       m.delete(id)
     },
     async elenco() {
-      return [...m.values()].map((r) => ({ ...r }))
+      // Ordine per creato_il DESC come il d1UserStore (ORDER BY creato_il DESC).
+      return [...m.values()]
+        .map((r) => ({ ...r }))
+        .sort((a, b) => b.creato_il.localeCompare(a.creato_il))
     },
   }
 }

@@ -4,12 +4,32 @@ import { fakeKV } from './fake-kv'
 import { fakeOrgStore } from './fake-org-store'
 import { fakeUserStore } from './fake-user-store'
 import { fakeSocietaStore } from './fake-societa-store'
+import type { UserStore } from './handler'
 import { hashPassword, creaJWT } from './auth'
 import type { OrgRecord } from '../../src/types/org'
 
 const WTOKEN = 'scrivi'
 const AUTH_SECRET = 'seg-test'
 const ADMIN_EMAIL = 'admin@x.it'
+
+// Store utenti permissivo per i test che NON forniscono un seed: il ricontrollo
+// sessione lato server (sessione() → perId) trova sempre un utente abilitato,
+// così i test che verificano lo scoping/le rotte continuano a passare senza
+// dover seedare l'utente di ogni token. I test sulla revoca usano invece un seed
+// esplicito (store stretto): utente disabilitato o assente → 401.
+function permissiveUserStore(seed?: UtenteRecord[]): UserStore {
+  const base = fakeUserStore(seed)
+  const abilitato = (id: string): UtenteRecord => ({
+    id, email: `${id}@x.it`, password_hash: '', salt: '', iterazioni: 1, ruolo: 'utente',
+    abilitato: 1, societa_id: null, societa_richiesta: null, creato_il: '',
+  })
+  // crea/perEmail/elenco/abilita/elimina reali (rispettano il seed), ma perId
+  // auto-vivifica gli id SCONOSCIUTI come utenti abilitati, così il gate di
+  // sessione passa senza dover seedare l'utente di ogni token. Gli utenti
+  // seedati (anche disabilitati) sono rispettati; i test sulla revoca da utente
+  // ELIMINATO usano invece uno store stretto (fakeUserStore) dove perId→null.
+  return { ...base, perId: async (id) => (await base.perId(id)) ?? abilitato(id) }
+}
 function env(
   seed?: Record<string, string>,
   orgSeed?: OrgRecord[],
@@ -20,7 +40,7 @@ function env(
     KV: fakeKV(seed),
     WRITE_TOKEN: WTOKEN,
     ORG: fakeOrgStore(orgSeed),
-    USERS: fakeUserStore(userSeed),
+    USERS: permissiveUserStore(userSeed),
     SOCIETA: fakeSocietaStore(societaSeed),
     AUTH_SECRET,
     ADMIN_EMAIL,
@@ -118,6 +138,36 @@ describe('handle', () => {
     const e = env({ 'torneo:ABC': riepilogo({ tipologia: '2x2' }) })
     const r = await handle(req('POST', '/api/iscrizioni/ABC', { body: { nomeSquadra: '', giocatori: giocatori2 } }), e)
     expect(r.status).toBe(201)
+  })
+
+  it('POST iscrizione idempotente: due invii con la stessa idempotencyKey creano UNA sola iscrizione', async () => {
+    const e = env({ 'torneo:ABC': riepilogo({ tipologia: '2x2' }) })
+    const body = { giocatori: giocatori2, idempotencyKey: 'reg-abcd1234-0001' }
+    const r1 = await handle(req('POST', '/api/iscrizioni/ABC', { body }), e)
+    const r2 = await handle(req('POST', '/api/iscrizioni/ABC', { body }), e)
+    expect(r1.status).toBe(201)
+    expect(r2.status).toBe(201)
+    expect((await r1.json()).id).toBe((await r2.json()).id) // stesso id → nessun duplicato
+    const { keys } = await e.KV.list({ prefix: 'iscr:ABC:' })
+    expect(keys).toHaveLength(1)
+  })
+
+  it('POST iscrizione senza idempotencyKey: due invii creano DUE iscrizioni (comportamento invariato)', async () => {
+    const e = env({ 'torneo:ABC': riepilogo({ tipologia: '2x2' }) })
+    const body = { giocatori: giocatori2 }
+    await handle(req('POST', '/api/iscrizioni/ABC', { body }), e)
+    await handle(req('POST', '/api/iscrizioni/ABC', { body }), e)
+    const { keys } = await e.KV.list({ prefix: 'iscr:ABC:' })
+    expect(keys).toHaveLength(2)
+  })
+
+  it('POST iscrizione con idempotencyKey malformata: la ignora e genera un id (nessuna injection nella chiave KV)', async () => {
+    const e = env({ 'torneo:ABC': riepilogo({ tipologia: '2x2' }) })
+    const r = await handle(req('POST', '/api/iscrizioni/ABC', { body: { giocatori: giocatori2, idempotencyKey: 'bad:key with spaces' } }), e)
+    expect(r.status).toBe(201)
+    const { keys } = await e.KV.list({ prefix: 'iscr:ABC:' })
+    expect(keys[0].name.includes(' ')).toBe(false)
+    expect(keys[0].name.includes('bad:key')).toBe(false)
   })
 
   it('POST iscrizione 4x4 SENZA nomeSquadra -> 400', async () => {
@@ -319,6 +369,23 @@ describe('handle', () => {
     expect(r.status).toBe(409)
     expect((await r.json()).version).toBe(3)
   })
+  it('PUT: due dispositivi dalla stessa base, il secondo va in conflitto (no lost-update)', async () => {
+    const e = env({}, [orgRow({ version: 5 })])
+    const r1 = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: '{"a":1}', version: 5 } }), e)
+    const r2 = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: '{"b":2}', version: 5 } }), e)
+    expect(r1.status).toBe(200)
+    expect((await r1.json()).version).toBe(6)
+    expect(r2.status).toBe(409)
+    expect((await r2.json()).version).toBe(6)
+    // il documento del primo scrittore non è stato sovrascritto
+    expect((await e.ORG.get('ABC'))?.doc).toBe('{"a":1}')
+  })
+
+  it('PUT nuovo documento con base non-zero ma inesistente -> 409 (niente creazione spuria)', async () => {
+    const r = await handle(req('PUT', '/api/org/NEW', { headers: await authS1(), body: { doc: '{}', version: 5 } }), env())
+    expect(r.status).toBe(409)
+  })
+
   it('PUT body non valido -> 400', async () => {
     const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: 123 } }), env())
     expect(r.status).toBe(400)
@@ -348,6 +415,92 @@ describe('handle', () => {
   it('DELETE /api/org/:codice senza token -> 401', async () => {
     const r = await handle(req('DELETE', '/api/org/ABC'), env({}, [orgRow()]))
     expect(r.status).toBe(401)
+  })
+
+  describe('Batch 2 — pulizia dati (GDPR), validazioni, robustezza', () => {
+    it('DELETE /api/org/:codice pulisce anche iscrizioni, riepilogo, snapshot pubblico e owner in KV', async () => {
+      const e = env(
+        {
+          'owner:ABC': 's1',
+          'torneo:ABC': riepilogo(),
+          'pubblico:ABC': snapshot(),
+          'iscr:ABC:i1': JSON.stringify({ id: 'i1' }),
+          'iscr:ABC:i2': JSON.stringify({ id: 'i2' }),
+          'iscr:XYZ:i9': JSON.stringify({ id: 'i9' }),
+        },
+        [orgRow()],
+      )
+      const r = await handle(req('DELETE', '/api/org/ABC', { headers: await authS1() }), e)
+      expect(r.status).toBe(200)
+      expect(await e.KV.get('torneo:ABC')).toBeNull()
+      expect(await e.KV.get('pubblico:ABC')).toBeNull()
+      expect(await e.KV.get('owner:ABC')).toBeNull()
+      expect(await e.KV.get('iscr:ABC:i1')).toBeNull()
+      expect(await e.KV.get('iscr:ABC:i2')).toBeNull()
+      // le iscrizioni di un altro torneo non vengono toccate
+      expect(await e.KV.get('iscr:XYZ:i9')).not.toBeNull()
+    })
+
+    it('POST /api/torneo con tipologia fuori enum -> 400', async () => {
+      const e = env({ 'owner:ABC': 's1' })
+      const r = await handle(req('POST', '/api/torneo', { headers: await authSoc('s1'), body: { codice: 'ABC', nome: 'C', tipologia: 'hacker' } }), e)
+      expect(r.status).toBe(400)
+    })
+
+    it('POST /api/pubblico/:codice con tipologia fuori enum -> 400', async () => {
+      const e = env({ 'owner:ABC': 's1' })
+      const r = await handle(req('POST', '/api/pubblico/ABC', { headers: await authSoc('s1'), body: { codice: 'ABC', nome: 'C', tipologia: 'x', regolePunteggio: {}, teams: [], groups: [], matches: [] } }), e)
+      expect(r.status).toBe(400)
+    })
+
+    it('POST /api/admin/utenti/:id/abilita con società inesistente -> 400', async () => {
+      const e = env({}, [], [], [{ id: 's1', nome: 'Club', creato_il: '' }])
+      const r = await handle(req('POST', '/api/admin/utenti/u9/abilita', { headers: await authAdminSess(), body: { societaId: 'FANTASMA' } }), e)
+      expect(r.status).toBe(400)
+    })
+
+    it('POST /api/admin/utenti/:id/abilita con società esistente -> 200', async () => {
+      const e = env({}, [], [{ id: 'u9', email: 'u9@x.it', password_hash: 'h', salt: 's', iterazioni: 1, ruolo: 'utente', abilitato: 0, societa_id: null, societa_richiesta: null, creato_il: '' }], [{ id: 's1', nome: 'Club', creato_il: '' }])
+      const r = await handle(req('POST', '/api/admin/utenti/u9/abilita', { headers: await authAdminSess(), body: { societaId: 's1' } }), e)
+      expect(r.status).toBe(200)
+    })
+
+    it('PUT /api/org/:codice con doc non-JSON -> 400', async () => {
+      const r = await handle(req('PUT', '/api/org/ABC', { headers: await authS1(), body: { doc: 'non-json{', version: 0 } }), env())
+      expect(r.status).toBe(400)
+    })
+
+    it('B10: un utente DISABILITATO dopo l\'emissione del token -> 401 (sessione revocata)', async () => {
+      // token valido per u-s1, ma nello store l'utente è ora abilitato=0
+      const disabilitato: UtenteRecord = { id: 'u-s1', email: 's1@x.it', password_hash: '', salt: '', iterazioni: 1, ruolo: 'utente', abilitato: 0, societa_id: 's1', societa_richiesta: null, creato_il: '' }
+      const e = env({}, [orgRow()], [disabilitato])
+      const r = await handle(req('GET', '/api/org/ABC', { headers: await authS1() }), e)
+      expect(r.status).toBe(401)
+    })
+
+    it('B10: un utente ELIMINATO (assente dallo store) col token ancora valido -> 401', async () => {
+      // store STRETTO senza u-s1 → perId ritorna null → sessione decade
+      const e = env({}, [orgRow()])
+      e.USERS = fakeUserStore([])
+      const r = await handle(req('GET', '/api/org/ABC', { headers: await authS1() }), e)
+      expect(r.status).toBe(401)
+    })
+
+    it('B10: un utente ancora abilitato mantiene l\'accesso', async () => {
+      const abilitato: UtenteRecord = { id: 'u-s1', email: 's1@x.it', password_hash: '', salt: '', iterazioni: 1, ruolo: 'utente', abilitato: 1, societa_id: 's1', societa_richiesta: null, creato_il: '' }
+      const e = env({}, [orgRow()], [abilitato])
+      const r = await handle(req('GET', '/api/org/ABC', { headers: await authS1() }), e)
+      expect(r.status).toBe(200)
+    })
+
+    it('un errore imprevisto dello store -> 500 con header CORS e corpo JSON', async () => {
+      const e = env({}, [orgRow()])
+      e.ORG.get = async () => { throw new Error('boom') }
+      const r = await handle(req('GET', '/api/org/ABC', { headers: await authS1() }), e)
+      expect(r.status).toBe(500)
+      expect(r.headers.get('access-control-allow-origin')).toBe('*')
+      expect((await r.json()).error).toBeTruthy()
+    })
   })
 
   describe('pubblicazione via sessione (scoping società)', () => {
@@ -669,7 +822,8 @@ describe('handle', () => {
       const e = env(undefined, undefined, [u])
       const r = await handle(req('DELETE', `/api/admin/utenti/${u.id}`, { headers: await authAdmin() }), e)
       expect(r.status).toBe(200)
-      expect(await e.USERS.perId(u.id)).toBeNull()
+      // via elenco (perId nello store di test auto-vivifica gli id sconosciuti)
+      expect((await e.USERS.elenco()).some((x) => x.id === u.id)).toBe(false)
     })
 
     it('DELETE /api/admin/utenti/:id con token utente non admin -> 403', async () => {
@@ -677,7 +831,7 @@ describe('handle', () => {
       const e = env(undefined, undefined, [u])
       const r = await handle(req('DELETE', `/api/admin/utenti/${u.id}`, { headers: await authUtente() }), e)
       expect(r.status).toBe(403)
-      expect(await e.USERS.perId(u.id)).not.toBeNull()
+      expect((await e.USERS.elenco()).some((x) => x.id === u.id)).toBe(true)
     })
 
     it('DELETE /api/admin/utenti/:id senza token -> 401', async () => {

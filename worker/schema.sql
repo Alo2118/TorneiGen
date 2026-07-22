@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS organizzazioni (
 -- ha gia' la colonna, fallisce con "duplicate column name" (atteso: va
 -- eseguita una sola volta).
 ALTER TABLE organizzazioni ADD COLUMN societa_id TEXT;
+-- Indice per l'elenco dei tornei di una societa' (GET /api/org filtra su societa_id):
+-- senza, ogni chiamata farebbe un full scan della tabella.
+CREATE INDEX IF NOT EXISTS idx_org_societa ON organizzazioni(societa_id);
 
 CREATE TABLE IF NOT EXISTS societa (
   id        TEXT PRIMARY KEY,

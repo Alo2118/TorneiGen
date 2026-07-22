@@ -10,6 +10,13 @@ export function fakeOrgStore(seed?: OrgRecord[]): OrgStore {
     async put(row) {
       m.set(row.codice, { ...row })
     },
+    async putSeVersione(row, base) {
+      const corrente = m.get(row.codice)
+      // base 0 => il documento non deve ancora esistere; base>0 => la versione deve combaciare
+      if (base === 0 ? corrente !== undefined : corrente?.version !== base) return false
+      m.set(row.codice, { ...row })
+      return true
+    },
     async delete(codice) {
       m.delete(codice)
     },
