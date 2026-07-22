@@ -388,6 +388,34 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   white-space: nowrap;
 }
 .match-row-set-placeholder { color: var(--muted); }
+@media (max-width: 720px) {
+  /* Su schermo stretto le 4 colonne orizzontali non entrano e nomi,
+     punteggi e bottone si accavallano. Impilo su tre righe: i due nomi
+     (metà larghezza ciascuno, con a capo così non vengono troncati),
+     i punteggi centrati su una riga propria e il bottone a tutta larghezza. */
+  .match-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "teamA teamB"
+      "sets  sets"
+      "azione azione";
+    gap: var(--space);
+    padding: calc(var(--space) * 1.5);
+  }
+  .match-row-team:first-of-type { grid-area: teamA; }
+  .match-row-team:last-of-type { grid-area: teamB; }
+  .match-row-sets {
+    grid-area: sets;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .match-row > button { grid-area: azione; width: 100%; }
+  .match-row-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
 
 /* --- ScoreControl (signature) --- */
 .score-control {
