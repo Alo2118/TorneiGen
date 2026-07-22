@@ -1,0 +1,17 @@
+{
+  "name": "TorneiGen — Tornei beach volley",
+  "short_name": "TorneiGen",
+  "description": "Gestione tornei di beach volley: iscrizioni, gironi, tabellone, calendario e classifiche.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FBFCFD",
+  "theme_color": "#0E9AA7",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

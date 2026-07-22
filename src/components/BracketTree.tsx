@@ -70,6 +70,7 @@ export function BracketTree({ matches, teamNames, variant, onMatchClick }: Props
         <button type="button" onClick={() => zoom(0.83)} aria-label="Rimpicciolisci">−</button>
         <button type="button" onClick={adatta}>Adatta</button>
       </div>
+      <p className="bracket-tree-hint">Trascina per esplorare · +/− per lo zoom</p>
       <div
         className="bracket-tree-viewport"
         ref={wrapRef}
