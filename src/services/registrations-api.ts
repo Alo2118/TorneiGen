@@ -46,7 +46,10 @@ export interface TorneoCloud {
 export interface RegistrationsClient {
   getRiepilogo(codice: string): Promise<Riepilogo>
   pubblicaRiepilogo(r: Riepilogo): Promise<Riepilogo>
-  inviaIscrizione(codice: string, dati: { nomeSquadra: string; giocatori: GiocatoreIscrizione[] }): Promise<{ id: string }>
+  inviaIscrizione(
+    codice: string,
+    dati: { nomeSquadra: string; giocatori: GiocatoreIscrizione[]; idempotencyKey?: string },
+  ): Promise<{ id: string }>
   elencaIscrizioni(codice: string): Promise<Iscrizione[]>
   eliminaIscrizione(codice: string, id: string): Promise<void>
   pubblicaSnapshot(snap: PublicSnapshot): Promise<void>

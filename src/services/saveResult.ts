@@ -14,7 +14,9 @@ export async function salvaEProppaga(
   const target = matches.find((m) => m.id === matchId)
   if (!target) throw new Error(`Partita ${matchId} non trovata`)
   const regoleMatch = target.tabelloneTipo === 'golden' ? { ...regole, setAlMeglioDi: 1 as const } : regole
-  const aggiornato = applicaRisultato(target, set, regoleMatch)
+  // Timestamp dell'ultima modifica del risultato: guida il merge convergente tra
+  // dispositivi (vince il più recente; un annullamento è un tombstone con data).
+  const aggiornato = { ...applicaRisultato(target, set, regoleMatch), risultatoAggiornatoAl: new Date().toISOString() }
   const conRisultato = matches.map((m) => (m.id === matchId ? aggiornato : m))
   const doppia = matches.some((m) => m.tabelloneTipo !== undefined && m.tabelloneTipo !== 'terzo')
   const finali = doppia ? propagaDoppia(conRisultato, regole) : propagaTabellone(conRisultato, regole)

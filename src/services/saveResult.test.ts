@@ -26,6 +26,15 @@ describe('salvaEProppaga', () => {
     expect(notificaModificaOrg).toHaveBeenCalledWith('t1')
   })
 
+  it('marca risultatoAggiornatoAl sulla partita salvata (per il merge by-time)', async () => {
+    await db.matches.bulkPut([tab('s1', 1, 0, 'A', 'B')])
+    const prima = new Date().toISOString()
+    await salvaEProppaga('t1', 's1', [{ puntiA: 21, puntiB: 10 }], r)
+    const s1 = await db.matches.get('s1')
+    expect(s1?.risultatoAggiornatoAl).toBeTruthy()
+    expect(s1!.risultatoAggiornatoAl! >= prima).toBe(true)
+  })
+
   it('lancia un errore se la partita non esiste', async () => {
     await db.matches.bulkPut([tab('s1', 1, 0, 'A', 'B')])
     await expect(salvaEProppaga('t1', 'inesistente', [{ puntiA: 21, puntiB: 10 }], r)).rejects.toThrow()

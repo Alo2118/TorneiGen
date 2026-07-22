@@ -4,10 +4,19 @@ import { getClient, getSessione } from './config'
 import { getTournament, matchesOf, saveTournament } from '../db/repositories'
 import { buildOrgDoc, applyOrgDoc, scriviOrgLocale, strutturaDiverge } from './orgDoc'
 
-/** true se il locale ha risultati per partite che il cloud non ha ancora. */
+/**
+ * true se il locale ha esiti che il cloud deve ancora ricevere: risultati per
+ * partite che il cloud non ha, OPPURE un risultato PIÙ RECENTE (per timestamp)
+ * per una partita che il cloud ha già. In entrambi i casi va ri-propagato per
+ * far convergere i due dispositivi.
+ */
 function haRisultatiExtra(docLocale: OrgDoc, docCloud: OrgDoc): boolean {
-  const idCloud = new Set((docCloud.risultati ?? []).map((r) => r.id))
-  return (docLocale.risultati ?? []).some((r) => !idCloud.has(r.id))
+  const cloudById = new Map((docCloud.risultati ?? []).map((r) => [r.id, r]))
+  return (docLocale.risultati ?? []).some((r) => {
+    const c = cloudById.get(r.id)
+    if (!c) return true
+    return r.risultatoAggiornatoAl != null && (c.risultatoAggiornatoAl == null || r.risultatoAggiornatoAl > c.risultatoAggiornatoAl)
+  })
 }
 
 export type StatoSync = 'sincronizzato' | 'aggiornato' | 'conflitto' | 'errore' | 'inpari'
@@ -147,7 +156,29 @@ export async function tiraOrg(
     return { stato: 'conflitto', versioneCloud: record.version, docCloud: doc }
   }
   await applicaEScrivi(tournamentId, doc, record.version)
-  if (haRisultatiExtra(docLocale, doc)) return spingiOrg(tournamentId, client)
+  if (haRisultatiExtra(docLocale, doc)) {
+    const esitoPush = await spingiOrg(tournamentId, client)
+    if (esitoPush.stato !== 'conflitto') return esitoPush
+    // Un altro dispositivo ha scritto tra il nostro pull e il re-push (409). I
+    // risultati extra sono già uniti in locale: NON vanno persi. Ripristino il
+    // pending e propongo la risoluzione col documento cloud più recente, così il
+    // conflitto è risolvibile dal banner invece di restare muto.
+    await marcaPending(tournamentId)
+    let recNuovo: Awaited<ReturnType<RegistrationsClient['getOrg']>> = null
+    try {
+      recNuovo = await client.getOrg(t.codiceIscrizione)
+    } catch {
+      recNuovo = null
+    }
+    if (recNuovo) {
+      try {
+        return { stato: 'conflitto', versioneCloud: recNuovo.version, docCloud: JSON.parse(recNuovo.doc) as OrgDoc }
+      } catch {
+        // doc cloud illeggibile: ricade sul conflitto senza docCloud
+      }
+    }
+    return { stato: 'conflitto', versioneCloud: esitoPush.versioneCloud }
+  }
   return { stato: 'aggiornato', versioneCloud: record.version }
 }
 
@@ -195,12 +226,34 @@ export async function risolviConflittoSovrascrivi(
 const DEBOUNCE_MS = 1500
 const timer = new Map<string, ReturnType<typeof setTimeout>>()
 
-async function marcaPending(tournamentId: string): Promise<void> {
-  const t = await getTournament(tournamentId)
-  if (t && !t.orgPending) await saveTournament({ ...t, orgPending: true })
+// Notifica leggera per far reagire la UI (es. la pillola SyncStato) quando lo
+// stato di sync cambia: modifica locale marcata pending, o esito del push
+// automatico (compreso un eventuale conflitto/errore). Senza questo, la pillola
+// resterebbe stantìa e un push fallito passerebbe del tutto inosservato.
+type ListenerSync = (tournamentId: string) => void
+const listenerSync = new Set<ListenerSync>()
+export function onSyncCambiato(l: ListenerSync): () => void {
+  listenerSync.add(l)
+  return () => listenerSync.delete(l)
+}
+function emitSync(tournamentId: string): void {
+  for (const l of listenerSync) l(tournamentId)
 }
 
-/** Da chiamare dopo ogni modifica dell'ORGANIZZAZIONE (non dei punteggi). */
+async function marcaPending(tournamentId: string): Promise<void> {
+  const t = await getTournament(tournamentId)
+  if (t && !t.orgPending) {
+    await saveTournament({ ...t, orgPending: true })
+    emitSync(tournamentId)
+  }
+}
+
+/**
+ * Da chiamare dopo ogni modifica locale (organizzazione o punteggi): marca il
+ * pending e programma l'invio automatico al cloud (debounced). L'esito del push
+ * viene notificato via onSyncCambiato così la UI non resta convinta a torto che
+ * i dati siano già sincronizzati.
+ */
 export function notificaModificaOrg(tournamentId: string, client: RegistrationsClient = getClient()): void {
   void marcaPending(tournamentId)
   if (!sincronizzabile()) return
@@ -210,7 +263,7 @@ export function notificaModificaOrg(tournamentId: string, client: RegistrationsC
     tournamentId,
     setTimeout(() => {
       timer.delete(tournamentId)
-      void spingiOrg(tournamentId, client)
+      void spingiOrg(tournamentId, client).finally(() => emitSync(tournamentId))
     }, DEBOUNCE_MS),
   )
 }

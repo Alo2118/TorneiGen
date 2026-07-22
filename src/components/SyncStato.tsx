@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { confrontaCloud, tiraOrg, type EsitoConfronto } from '../services/orgSync'
+import { confrontaCloud, tiraOrg, onSyncCambiato, type EsitoConfronto } from '../services/orgSync'
 import { Button } from './Button'
 
 /**
@@ -17,11 +17,19 @@ export function SyncStato({ tournamentId }: { tournamentId: string }) {
 
   useEffect(() => {
     let annullato = false
-    void confrontaCloud(tournamentId).then((r) => {
-      if (!annullato) setStato(r.stato)
+    const check = () =>
+      void confrontaCloud(tournamentId).then((r) => {
+        if (!annullato) setStato(r.stato)
+      })
+    check()
+    // Reagisce alle modifiche locali e all'esito dei push automatici, così la
+    // pillola non resta stantìa (A7) e un push fallito non passa inosservato (A2).
+    const off = onSyncCambiato((tid) => {
+      if (tid === tournamentId) check()
     })
     return () => {
       annullato = true
+      off()
     }
   }, [tournamentId])
 
@@ -63,6 +71,16 @@ export function SyncStato({ tournamentId }: { tournamentId: string }) {
     return (
       <span className="sync-stato sync-stato-ok" role="status">
         Sincronizzato
+      </span>
+    )
+  }
+  if (stato === 'errore') {
+    return (
+      <span className="sync-stato sync-stato-conflitto" role="status">
+        Sincronizzazione non riuscita
+        <Button variant="ghost" onClick={() => void aggiorna()} disabled={occupato}>
+          {occupato ? 'Riprovo…' : 'Riprova'}
+        </Button>
       </span>
     )
   }

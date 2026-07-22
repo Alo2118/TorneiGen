@@ -46,6 +46,18 @@ describe('buildOrgDoc', () => {
     ])
   })
 
+  it('include come tombstone una partita azzerata ma toccata (ha risultatoAggiornatoAl)', async () => {
+    // m2 è tornata "programmata" (annullata) ma con timestamp: va sincronizzata
+    // come tombstone così l'annullamento converge sull'altro dispositivo.
+    await db.matches.put(match('m2', { set: [], stato: 'programmata', risultatoAggiornatoAl: '2026-07-20T15:00:00Z' }))
+    const doc = await buildOrgDoc('t1')
+    const r = (doc.risultati ?? []).find((x) => x.id === 'm2')
+    expect(r).toBeTruthy()
+    expect(r?.stato).toBe('programmata')
+    expect(r?.set).toEqual([])
+    expect(r?.risultatoAggiornatoAl).toBe('2026-07-20T15:00:00Z')
+  })
+
   it('esclude i campi locali dal torneo nel documento', async () => {
     const doc = await buildOrgDoc('t1')
     expect(doc.tournament.pubblicato).toBeUndefined()
@@ -123,6 +135,44 @@ describe('applyOrgDoc', () => {
     expect(f.teamAId).toBe('A')
   })
 
+  it('merge by-time: se entrambi hanno il risultato dello stesso match, vince il più recente (A4)', () => {
+    const doc: OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [{ id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' }],
+      risultati: [{ id: 'm1', set: [{ puntiA: 21, puntiB: 5 }], vincitoreId: 'a', stato: 'conclusa', risultatoAggiornatoAl: '2026-07-20T10:00:00Z' }],
+    }
+    // il locale ha un risultato PIÙ RECENTE per lo stesso match → deve vincere il locale
+    const locali: Match[] = [match('m1', { set: [{ puntiA: 15, puntiB: 21 }], stato: 'conclusa', vincitoreId: 'b', risultatoAggiornatoAl: '2026-07-20T12:00:00Z' })]
+    const res = applyOrgDoc(doc, torneo, locali)
+    expect(res.matches[0].set).toEqual([{ puntiA: 15, puntiB: 21 }])
+    expect(res.matches[0].vincitoreId).toBe('b')
+  })
+
+  it('merge by-time: se il cloud è più recente vince il cloud', () => {
+    const doc: OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [{ id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' }],
+      risultati: [{ id: 'm1', set: [{ puntiA: 21, puntiB: 5 }], vincitoreId: 'a', stato: 'conclusa', risultatoAggiornatoAl: '2026-07-20T14:00:00Z' }],
+    }
+    const locali: Match[] = [match('m1', { set: [{ puntiA: 15, puntiB: 21 }], stato: 'conclusa', vincitoreId: 'b', risultatoAggiornatoAl: '2026-07-20T12:00:00Z' })]
+    const res = applyOrgDoc(doc, torneo, locali)
+    expect(res.matches[0].vincitoreId).toBe('a')
+  })
+
+  it('tombstone: un annullamento più recente dal cloud azzera il risultato locale (A5)', () => {
+    const doc: OrgDoc = {
+      tournament: torneo, teams: [], groups: [],
+      struttura: [{ id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'b' }],
+      // tombstone dal cloud: risultato azzerato, ma con timestamp più recente
+      risultati: [{ id: 'm1', set: [], vincitoreId: null, stato: 'programmata', risultatoAggiornatoAl: '2026-07-20T15:00:00Z' }],
+    }
+    const locali: Match[] = [match('m1', { set: [{ puntiA: 21, puntiB: 5 }], stato: 'conclusa', vincitoreId: 'a', risultatoAggiornatoAl: '2026-07-20T09:00:00Z' })]
+    const res = applyOrgDoc(doc, torneo, locali)
+    expect(res.matches[0].set).toEqual([])
+    expect(res.matches[0].stato).toBe('programmata')
+    expect(res.matches[0].vincitoreId).toBeNull()
+  })
+
   it('inizializza punteggi vuoti per match nuovi e rimuove quelli assenti dal cloud', () => {
     const doc: import('../types/org').OrgDoc = {
       tournament: torneo, teams: [], groups: [],
@@ -157,6 +207,51 @@ describe('strutturaDiverge', () => {
   })
   it('gestisce documenti incompleti senza lanciare', () => {
     expect(strutturaDiverge(base, {} as OrgDoc)).toBe(true)
+  })
+
+  // Nel tabellone teamAId/teamBId sono STATO DERIVATO (round 1 = ranking gironi,
+  // round successivi = avanzamento dei vincitori). Due dispositivi che inseriscono
+  // risultati diversi fanno avanzare squadre diverse: NON è un conflitto strutturale.
+  const conTabellone: OrgDoc = {
+    tournament: torneo, teams: [team('a'), team('b')], groups: [group],
+    struttura: [
+      { id: 's1', tournamentId: 't1', fase: 'tabellone', round: 1, posizioneTabellone: 0, teamAId: 'A', teamBId: 'B' },
+      { id: 'f', tournamentId: 't1', fase: 'tabellone', round: 2, posizioneTabellone: 0, teamAId: 'A', teamBId: null },
+    ],
+  }
+  it('è falsa se differiscono solo gli occupanti del tabellone (slot derivati, round successivi)', () => {
+    const finaleVuota: OrgDoc = {
+      ...conTabellone,
+      struttura: [
+        conTabellone.struttura[0],
+        { id: 'f', tournamentId: 't1', fase: 'tabellone', round: 2, posizioneTabellone: 0, teamAId: null, teamBId: null },
+      ],
+    }
+    expect(strutturaDiverge(conTabellone, finaleVuota)).toBe(false)
+  })
+  it('è falsa anche se differiscono le teste di serie del round 1 del tabellone (derivate dai gironi)', () => {
+    const altraSemina: OrgDoc = {
+      ...conTabellone,
+      struttura: [
+        { id: 's1', tournamentId: 't1', fase: 'tabellone', round: 1, posizioneTabellone: 0, teamAId: 'C', teamBId: 'D' },
+        conTabellone.struttura[1],
+      ],
+    }
+    expect(strutturaDiverge(conTabellone, altraSemina)).toBe(false)
+  })
+  it('resta vera se cambia la FORMA del tabellone (numero di slot / round / posizione)', () => {
+    const piuSlot: OrgDoc = {
+      ...conTabellone,
+      struttura: [...conTabellone.struttura, { id: 'x', tournamentId: 't1', fase: 'tabellone', round: 2, posizioneTabellone: 1, teamAId: null, teamBId: null }],
+    }
+    expect(strutturaDiverge(conTabellone, piuSlot)).toBe(true)
+  })
+  it('per i gironi gli accoppiamenti restano strutturali (teamAId/teamBId contano)', () => {
+    const altraCoppia: OrgDoc = {
+      ...base,
+      struttura: [{ id: 'm1', tournamentId: 't1', fase: 'girone', groupId: 'g1', round: 1, teamAId: 'a', teamBId: 'c' }],
+    }
+    expect(strutturaDiverge(base, altraCoppia)).toBe(true)
   })
 })
 

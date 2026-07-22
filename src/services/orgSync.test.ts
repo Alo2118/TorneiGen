@@ -145,6 +145,36 @@ describe('tiraOrg', () => {
     expect(esito.stato).toBe('sincronizzato')
   })
 
+  it('se il RE-PUSH dopo il merge va in conflitto, espone docCloud e mantiene il pending (A3: niente conflitto muto)', async () => {
+    // Locale con un risultato non ancora sul cloud (pending, non strutturale).
+    await saveTournament({ ...torneo, orgVersion: 1, orgPending: true })
+    await db.matches.put(match('m1', { set: [{ puntiA: 21, puntiB: 5 }], stato: 'conclusa', vincitoreId: 'a' }))
+    const doc = await buildOrgDoc('t1')
+    const docCloud = { ...doc, risultati: [] } // il cloud non ha il risultato di m1
+    const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(docCloud), version: 4, updatedAt: 'x' }
+    // Un altro dispositivo scrive tra il nostro pull e il nostro re-push → 409.
+    const putOrg = vi.fn(async () => ({ conflitto: true, version: 7 }))
+    const getOrg = vi.fn(async () => record)
+    const esito = await tiraOrg('t1', fakeClient({ getOrg, putOrg }))
+    expect(esito.stato).toBe('conflitto')
+    expect(esito.docCloud).toBeTruthy() // risolvibile dal banner, non muto
+    const t = await getTournament('t1')
+    expect(t?.orgPending).toBe(true) // i risultati extra non vanno persi
+  })
+
+  it('ri-propaga (push) se il locale ha un risultato PIÙ RECENTE del cloud per la stessa partita (merge by-time)', async () => {
+    await saveTournament({ ...torneo, orgVersion: 1, orgPending: true })
+    await db.matches.put(match('m1', { set: [{ puntiA: 15, puntiB: 21 }], stato: 'conclusa', vincitoreId: 'b', risultatoAggiornatoAl: '2026-07-20T12:00:00Z' }))
+    const doc = await buildOrgDoc('t1')
+    // il cloud ha un risultato PIÙ VECCHIO per m1
+    const docCloud = { ...doc, risultati: [{ id: 'm1', set: [{ puntiA: 21, puntiB: 5 }], vincitoreId: 'a', stato: 'conclusa' as const, risultatoAggiornatoAl: '2026-07-20T09:00:00Z' }] }
+    const record: OrgRecord = { codice: 'ABC123', doc: JSON.stringify(docCloud), version: 4, updatedAt: 'x' }
+    const putOrg = vi.fn(async () => ({ conflitto: false, version: 5 }))
+    const esito = await tiraOrg('t1', fakeClient({ getOrg: async () => record, putOrg }))
+    expect(putOrg).toHaveBeenCalled() // il locale più recente viene ri-propagato
+    expect(esito.stato).toBe('sincronizzato')
+  })
+
   it('se il doc cloud non è JSON valido, restituisce errore senza lanciare', async () => {
     await saveTournament({ ...torneo, orgVersion: 1, orgPending: false })
     const record: OrgRecord = { codice: 'ABC123', doc: 'non-json{', version: 4, updatedAt: 'x' }

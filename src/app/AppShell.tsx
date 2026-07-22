@@ -6,6 +6,7 @@ import { exportBackup } from '../db/backup'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { SyncStato } from '../components/SyncStato'
+import { useToast } from '../components/Toast'
 import { utenteCorrente, type Utente } from '../services/auth'
 
 const SEZIONI = [
@@ -35,6 +36,7 @@ export function AppShell() {
   const torneo = useLiveQuery(() => (id ? getTournament(id) : undefined), [id])
   const [utente, setUtente] = useState<Utente | null>(null)
   const isAdmin = utente?.ruolo === 'admin'
+  const toast = useToast()
 
   useEffect(() => {
     let cancellato = false
@@ -48,16 +50,24 @@ export function AppShell() {
 
   async function handleExport() {
     if (!torneo) return
-    const data = await exportBackup(torneo.id)
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `torneo-${torneo.nome}.json`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
+    let url: string | undefined
+    let link: HTMLAnchorElement | undefined
+    try {
+      const data = await exportBackup(torneo.id)
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      url = URL.createObjectURL(blob)
+      link = document.createElement('a')
+      link.href = url
+      link.download = `torneo-${torneo.nome}.json`
+      document.body.appendChild(link)
+      link.click()
+    } catch {
+      toast('Export non riuscito', 'errore')
+    } finally {
+      // Pulizia garantita anche in caso di errore: niente <a> orfano né URL trapelato.
+      link?.remove()
+      if (url) URL.revokeObjectURL(url)
+    }
   }
 
   return (
